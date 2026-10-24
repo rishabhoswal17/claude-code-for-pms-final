@@ -144,3 +144,11 @@ month.
 - Likely root causes (inference, unconfirmed): the shorter 60s wait led to more misses, and the miss penalty kept those responders sliding down the order. No owner or real numbers meant nobody caught it. Confirm with Wen and Ravi.
 - The Requisition Approval Chains brief contradicts Halloran's interview: Halloran wants faster approvals, not a second step. The Bulk Callout and Audit Log briefs are stale (both shipped).
 - The student prefers plain English, short answers and visuals. Avoid unexplained Rook jargon.
+
+**Module 2 findings (interviews + all 147 tickets):**
+- Tickets grouped: gone quiet 30, job gone mid-reach 15, other ping glitches 6, alert sound 2, saved filters 16, hard to see 8, other console 42, Supply 26, billing 2. All 45 gone-quiet and job-gone tickets came after 4.2 and are still open. Tickets went from about 6 a week to about 29.
+- Before vs. after 4.2: misses went from about 4 to about 28 a week, while refusals *fell* (about 36 to about 31). The never-fading penalty existed before but was dormant.
+- The two piles barely overlap: the interviewed handlers filed only 1 ticket. Tickets miss Vesper, Meteor Mite and The Gale (overloaded, about 13 to 19 a week). Interviews miss Farlight, The Undertow, Halfmoon and Corporal Ashgrove. Only the pings data covers all 16.
+- Contradictions: Halloran says maintenance scheduling got smarter, but 4 tickets disagree. Saved filters sound like a win in interviews but have 12 bug tickets.
+- Backlog drafted in `01-origin-story/4.2-recovery-requirements.md`: 3 initiatives, 7 epics, 22 stories, no new roadmap lines. P0 reopens "Ping timeout tuning" to fix the answer window and the miss penalty, and replies to the 45 open tickets.
+- Open: Helen on Availability Confidence vs. story 3.1.2; flag the 4.3 approval-chain conflict to Supply; consider interviewing Linda Pruitt and Desmond Okafor.
