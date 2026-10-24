@@ -24,6 +24,14 @@ prompt library built from your own questions.
 
 ### 1.
 
+What's contradictory or missing, not just in the company documents, but across Rook's wiki, its database, and the files in my repo?
+
 ### 2.
 
+While your response is well-detailed & rooted in the company documentation & therefore the company lingo, as you know I'm a new PM. I don't have the necessary context &/or experience to easily comprehend your response jest yet (hence my request for you to read it & help me infer it).
+
+Could you update your response to be concise, in plain english & with an added section where you state 3 materials root causes for the problem.
+
 ### 3.
+
+Alright, before we dive deeper into the problem together, I need to understand the structure of our clients (responders, handlers & quartermasters) & the functionalities i.e. products they use across our platforms (web, mobile etc.). I am a visual learner - draw me the structure.
