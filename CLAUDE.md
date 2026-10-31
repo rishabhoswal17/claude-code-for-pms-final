@@ -152,3 +152,11 @@ month.
 - Contradictions: Halloran says maintenance scheduling got smarter, but 4 tickets disagree. Saved filters sound like a win in interviews but have 12 bug tickets.
 - Backlog drafted in `01-origin-story/4.2-recovery-requirements.md`: 3 initiatives, 7 epics, 22 stories, no new roadmap lines. P0 reopens "Ping timeout tuning" to fix the answer window and the miss penalty, and replies to the 45 open tickets.
 - Open: Helen on Availability Confidence vs. story 3.1.2; flag the 4.3 approval-chain conflict to Supply; consider interviewing Linda Pruitt and Desmond Okafor.
+
+**Module 3 findings (pings + callouts + tickets in rook-database; routing code):**
+- All 1,696 pings saved in `03-rewind/pings-rows-used.csv`. After 4.2: % taken 76.6% → 64.0%, misses about 4 → 30 a week, turn-downs fell (36 → 30). Misses move on release day; "gone quiet" tickets lag 1–2 weeks and peak after misses had started falling.
+- Groups by ping change: cut off (Farlight, The Undertow, Vesper, Meteor Mite: pings fell by half or more), fading (Corporal Ashgrove, Halfmoon), picking up (the other 10, up 16–42%). Time of day explains nothing. In every case the misses came before the drop in pings.
+- In the cut-off responders' own areas, a local was asked first 80% → 17% of the time, despite 4.2 weighting distance up. Nobody ever takes jobs outside their own area; since 4.2 the busy responders get many more of these and miss most of them.
+- Mechanism (inference): score = 0.60 closeness + 0.25 recent-yes + 0.15 capability. A full recent-yes score is worth about 19 minutes of travel. Break-even is 60% taken. Replaying the score: Farlight fell from 0.84 to 0 by 28 Aug; The Gale refilled to ~0.96 within days. The strongest predictor of the drop is release-week miss share (r ≈ −0.81). Behaviour before 4.2 shows no link.
+- The published dashboard (claude.ai artifact "Release 4.2 Ping Drop") loads blank because rook-database only works inside this session. The student chose to use visuals in chat instead.
+- Open: Wen to share real score history and travel times; answer times aren't recorded anywhere; Marcus's 14 Aug question on whether a miss should equal a refusal is still unanswered.
