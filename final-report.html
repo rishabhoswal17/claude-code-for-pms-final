@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Silent Penalty</title>
+<meta name="description" content="Release 4.2, told as a six-issue story: what happened, how we found it, the fix, and how we stop it happening again.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Public+Sans:ital,wght@0,400;0,600;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#fbf5e6; --panel:#ffffff; --panel-2:#f3ecdb; --ink:#141414; --muted:#5b5446; --faint:#8c8473; --line:#141414; --grid:#e3dccb;
+  --red:#d7261e; --red-ink:#b01d16; --yellow:#ffd23f; --yellow-ink:#141414; --blue:#1d4fa8; --dot:rgba(20,20,20,.09);
+  --s1:#d4500d; --s2:#1f5fbf; --s3:#8c8473;
+  --pass:#1f7a4d; --partly:#b77a00; --fail:#c0261d; --blocked:#6b6b6b;
+  --shadow:#141414;
+  --display:"Bangers","Impact","Arial Black",sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#16141b; --panel:#211e27; --panel-2:#2a2631; --ink:#f4efe3; --muted:#bdb4a3; --faint:#8f8778; --line:#f4efe3; --grid:#3a3542;
+  --red:#ff5a4e; --red-ink:#ff7a70; --yellow:#ffd23f; --yellow-ink:#141414; --blue:#7ea6ff; --dot:rgba(255,255,255,.06);
+  --s1:#ff8a4c; --s2:#7ea6ff; --s3:#9b9384;
+  --pass:#5fd39a; --partly:#f0b84a; --fail:#ff6b61; --blocked:#a5a5a5;
+  --shadow:#000; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#16141b; --panel:#211e27; --panel-2:#2a2631; --ink:#f4efe3; --muted:#bdb4a3; --faint:#8f8778; --line:#f4efe3; --grid:#3a3542;
+  --red:#ff5a4e; --red-ink:#ff7a70; --yellow:#ffd23f; --yellow-ink:#141414; --blue:#7ea6ff; --dot:rgba(255,255,255,.06);
+  --s1:#ff8a4c; --s2:#7ea6ff; --s3:#9b9384;
+  --pass:#5fd39a; --partly:#f0b84a; --fail:#ff6b61; --blocked:#a5a5a5;
+  --shadow:#000; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-snap-type:y proximity;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  background-image:radial-gradient(var(--dot) 1.1px,transparent 1.5px);background-size:11px 11px}
+h1,h2,h3{font-family:var(--display);font-weight:400;letter-spacing:.02em;margin:0;line-height:1.02}
+p{margin:0}
+a{color:var(--blue)}
+.mono{font-family:var(--mono)}
+
+/* slides */
+.slide{min-height:100vh;scroll-snap-align:start;padding:56px max(16px,4vw) 72px;display:flex;flex-direction:column;justify-content:center}
+.inner{max-width:1180px;width:100%;margin:0 auto;display:grid;gap:22px}
+.kicker{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tag{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.08em;border:2px solid var(--line);padding:3px 9px;background:var(--panel)}
+.tag.red{background:var(--red);color:#fff;border-color:var(--line)}
+.tag.yel{background:var(--yellow);color:var(--yellow-ink)}
+.issue{font-family:var(--display);font-size:22px;color:var(--red-ink)}
+.title{font-size:clamp(40px,6.5vw,84px);text-shadow:3px 3px 0 var(--yellow)}
+.title.sm{font-size:clamp(34px,5vw,60px)}
+.lede{font-size:clamp(17px,1.6vw,20px);max-width:70ch;color:var(--muted)}
+.lede b{color:var(--ink)}
+
+/* comic panels */
+.panel{background:var(--panel);border:3px solid var(--line);box-shadow:6px 6px 0 var(--shadow);padding:20px 22px;position:relative;min-width:0}
+.panel h3{font-size:26px;margin-bottom:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.grid-6-4{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.grid2,.grid3,.grid-6-4{grid-template-columns:1fr}}
+.caption{background:var(--yellow);color:var(--yellow-ink);border:3px solid var(--line);padding:10px 14px;font-weight:600;box-shadow:4px 4px 0 var(--shadow);max-width:72ch}
+.caption .cap-h{font-family:var(--display);font-size:20px;letter-spacing:.04em;display:block;font-weight:400}
+
+/* prompt speech bubble */
+.bubble{background:var(--panel);border:3px solid var(--line);border-radius:22px;padding:16px 20px 18px;position:relative;box-shadow:5px 5px 0 var(--shadow);margin-bottom:22px}
+.bubble::after{content:"";position:absolute;left:44px;bottom:-22px;width:30px;height:22px;background:var(--panel);border-right:3px solid var(--line);border-bottom:3px solid var(--line);transform:skewX(-35deg);box-shadow:5px 5px 0 var(--shadow)}
+.bubble::before{content:"";position:absolute;left:40px;bottom:-3px;width:42px;height:6px;background:var(--panel);z-index:1}
+.who{font-family:var(--display);font-size:18px;color:var(--red-ink);letter-spacing:.05em;display:block;margin-bottom:4px}
+.prompt{font-family:var(--mono);font-size:13.5px;line-height:1.6;white-space:pre-wrap;margin:0;overflow-wrap:anywhere}
+.src{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;display:block}
+
+/* bursts and numbers */
+.burst{--b:var(--yellow);width:150px;height:150px;background:var(--b);display:grid;place-items:center;text-align:center;flex:none;filter:drop-shadow(4px 4px 0 var(--shadow))}
+.burst b{font-family:var(--display);font-size:42px;line-height:.9;color:var(--yellow-ink);display:block;font-weight:400}
+.burst span{font-size:11.5px;font-weight:800;color:var(--yellow-ink);text-transform:uppercase;letter-spacing:.03em;max-width:92px;display:block;line-height:1.15}
+.burst.red{--b:var(--red)} .burst.red b,.burst.red span{color:#fff}
+.stats{display:flex;flex-wrap:wrap;gap:18px;justify-content:flex-start}
+.stat{background:var(--panel);border:3px solid var(--line);box-shadow:5px 5px 0 var(--shadow);padding:14px 16px;min-width:0}
+.stat .big{font-family:var(--display);font-size:clamp(32px,3.4vw,48px);line-height:.95;display:block;white-space:nowrap}
+.stat .big .arrow{color:var(--red-ink)}
+.stat .lbl{font-size:13.5px;color:var(--muted);display:block;margin-top:6px}
+.statrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}
+@media (max-width:900px){.statrow{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:460px){.statrow{grid-template-columns:1fr}}
+
+/* charts */
+.chart{width:100%;height:auto;display:block;overflow:visible}
+.chart text{font-family:var(--mono);font-size:13px;fill:var(--muted)}
+.chart .gl{stroke:var(--grid);stroke-width:1}
+.chart .ax{stroke:var(--ink);stroke-width:1.5}
+.chart .rel{stroke:var(--red);stroke-width:2;stroke-dasharray:5 4}
+.chart .rel-t{fill:var(--red-ink);font-weight:500}
+.chart .hit{fill:transparent;cursor:crosshair}
+.chart .hit:hover{fill:var(--ink);fill-opacity:.05}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin:2px 0 8px}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend i.sq{height:12px;width:12px;border-radius:3px}
+.chart-title{font-weight:800;font-size:15px;margin-bottom:2px}
+.note{font-size:13px;color:var(--muted)}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12.5px;padding:7px 10px;border-radius:4px;max-width:260px;line-height:1.4;opacity:0;transition:opacity .1s}
+.tip.on{opacity:1}
+.tip b{font-weight:800}
+
+/* html bars */
+.hbars{display:grid;gap:7px}
+.hb{display:grid;grid-template-columns:minmax(120px,190px) minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:13.5px}
+.hb .track{height:18px;position:relative}
+.hb .fill{height:100%;border-radius:0 4px 4px 0;background:var(--s3);opacity:.55}
+.hb.hot .fill{background:var(--red);opacity:1}
+.hb.hot .lab{font-weight:800}
+.hb .n{font-family:var(--mono);font-size:13px;text-align:right}
+@media (max-width:460px){.hb{grid-template-columns:110px minmax(0,1fr) 30px;font-size:12.5px}}
+
+.stack{display:flex;height:34px;gap:2px;border:3px solid var(--line);background:var(--line)}
+.stack span{display:grid;place-items:center;font-family:var(--mono);font-size:12.5px;color:#fff;font-weight:500;min-width:0;overflow:hidden}
+.stack .pass{background:var(--pass)} .stack .partly{background:var(--partly)} .stack .fail{background:var(--fail)} .stack .blocked{background:var(--blocked)}
+.stackrow{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:center;font-size:13.5px;font-weight:600}
+
+.dots{display:grid;gap:12px}
+.drow{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;align-items:center;font-size:13.5px;font-weight:600}
+.dtrack{position:relative;height:28px;border-bottom:1.5px solid var(--ink)}
+.dtrack .usual{position:absolute;top:2px;bottom:0;width:2px;background:var(--ink);opacity:.45}
+.dtrack .pt{position:absolute;bottom:3px;width:16px;height:16px;border-radius:50%;transform:translateX(-50%);border:2px solid var(--panel);box-shadow:0 0 0 1px var(--ink)}
+.dscale{display:grid;grid-template-columns:110px minmax(0,1fr);gap:12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.dscale div{display:flex;justify-content:space-between}
+
+/* tables */
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:500;padding:8px 10px;border-bottom:3px solid var(--line)}
+td{padding:10px;border-bottom:1.5px solid var(--grid);vertical-align:top}
+.tscroll{overflow-x:auto}
+.pos{color:var(--pass);font-weight:800}
+.neg{color:var(--fail);font-weight:800}
+s{color:var(--faint)}
+
+/* double diamond */
+.dd text{font-family:var(--display);font-size:22px;fill:var(--ink);letter-spacing:.04em}
+.dd .sm{font-family:var(--mono);font-size:13px;fill:var(--muted);letter-spacing:0}
+.dd .iss{font-family:var(--body);font-size:14px;font-weight:800;fill:var(--ink)}
+
+/* villain card */
+.villain{background:var(--ink);color:var(--paper);border:3px solid var(--line);box-shadow:6px 6px 0 var(--red);padding:20px 22px}
+.villain h3{font-size:34px;color:var(--yellow);margin-bottom:6px}
+.villain dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14.5px}
+.villain dt{font-family:var(--mono);font-size:12px;text-transform:uppercase;color:var(--yellow);padding-top:2px}
+.villain dd{margin:0}
+
+/* prototype frame */
+.frame{border:3px solid var(--line);box-shadow:6px 6px 0 var(--shadow);background:var(--panel)}
+.frame-bar{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:3px solid var(--line);background:var(--yellow);color:var(--yellow-ink);font-weight:700;font-size:13.5px}
+.frame-bar a{color:var(--yellow-ink)}
+.frame iframe{display:block;width:100%;height:min(860px,82vh);border:0;background:#e9ecf2}
+
+/* cover */
+.cover .inner{gap:28px}
+.cover-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:4px solid var(--line);padding-bottom:10px}
+.cover-top .mast{font-family:var(--display);font-size:clamp(26px,3.4vw,40px);letter-spacing:.05em}
+.cover-top .price{font-family:var(--mono);font-size:12px;border:2px solid var(--line);padding:4px 8px;background:var(--panel)}
+.cover-main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:28px;align-items:center}
+@media (max-width:900px){.cover-main{grid-template-columns:1fr}}
+.cover h1{font-size:clamp(56px,10vw,132px);color:var(--red);text-shadow:4px 4px 0 var(--ink),8px 8px 0 var(--yellow)}
+.cover .sub{font-size:clamp(18px,2vw,24px);font-weight:600;max-width:34ch}
+.splash{background:var(--panel);border:3px solid var(--line);box-shadow:8px 8px 0 var(--shadow);aspect-ratio:1/1;position:relative;overflow:hidden;display:grid;place-items:center}
+.splash .rays{position:absolute;inset:-30%;background:repeating-conic-gradient(var(--yellow) 0 9deg,var(--panel) 9deg 18deg);opacity:.9}
+.splash .phone{position:relative;width:46%;aspect-ratio:9/17;background:var(--ink);border-radius:22px;border:4px solid var(--line);display:grid;place-items:center;transform:rotate(-8deg);box-shadow:8px 8px 0 var(--red)}
+.splash .phone::before{content:"";position:absolute;inset:8px;border-radius:14px;background:#2a2733}
+.splash .phone span{position:relative;font-family:var(--display);color:#fff;font-size:clamp(20px,3vw,34px);text-align:center;line-height:1}
+.splash .zzz{position:absolute;right:8%;top:10%;font-family:var(--display);font-size:clamp(28px,4vw,52px);color:var(--red);transform:rotate(12deg);text-shadow:3px 3px 0 var(--ink)}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:13px;border:2px solid var(--line);padding:3px 10px;background:var(--panel);font-weight:600}
+.chip.s1{border-color:var(--s1)} .chip.s2{border-color:var(--s2)}
+ul.tight{margin:0;padding-left:20px;display:grid;gap:6px}
+ol.tight{margin:0;padding-left:22px;display:grid;gap:8px}
+.ans{font-size:clamp(18px,1.9vw,22px);line-height:1.5}
+.blank{background:var(--yellow);color:var(--yellow-ink);padding:1px 6px;font-weight:800;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+
+/* nav */
+.nav{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));z-index:40;display:flex;gap:6px;align-items:center;background:var(--panel);border:3px solid var(--line);box-shadow:4px 4px 0 var(--shadow);padding:5px 6px}
+.nav button{font:inherit;font-family:var(--display);font-size:18px;background:var(--yellow);color:var(--yellow-ink);border:2px solid var(--line);width:36px;height:34px;cursor:pointer}
+.nav button:disabled{opacity:.4;cursor:default}
+.nav .pos-l{font-family:var(--mono);font-size:12px;min-width:58px;text-align:center}
+button:focus-visible,a:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.foot{font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- 0 · COVER -->
+<section class="slide cover" id="cover" aria-label="Cover">
+  <div class="inner">
+    <div class="cover-top">
+      <span class="mast">ROOK DISPATCH COMICS</span>
+      <span class="price">ISSUE #4.2 · NOV 2026 · A PRODUCT STORY IN 6 PARTS</span>
+    </div>
+    <div class="cover-main">
+      <div style="display:grid;gap:18px">
+        <span class="tag yel" style="justify-self:start">The case of the phones that never rang</span>
+        <h1>The Silent<br>Penalty</h1>
+        <p class="sub">How a 30-second change cut four responders out of their own jobs, and how a new PM brought them back.</p>
+        <div class="chips">
+          <span class="chip">Discover</span><span class="chip">Define</span><span class="chip">Develop</span><span class="chip">Deliver</span>
+        </div>
+        <p class="note">Told with the Double Diamond product framework. Every number comes from Rook's own data, and every panel shows the prompt that found it.</p>
+      </div>
+      <div class="splash" aria-hidden="true">
+        <div class="rays"></div>
+        <div class="phone"><span>NO<br>PINGS</span></div>
+        <div class="zzz">…silence</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 1 · THE STORY SO FAR -->
+<section class="slide" id="tldr" aria-label="What happened">
+  <div class="inner">
+    <div class="kicker"><span class="tag red">Previously on Rook Dispatch</span><span class="tag">The plain version</span></div>
+    <h2 class="title sm">What happened with Release 4.2</h2>
+    <div class="caption"><span class="cap-h">In one breath</span>
+      On 12 August, Release 4.2 cut the time a responder has to answer a job offer from 90 to 60 seconds. Missed offers jumped overnight. An old rule in the routing code counted every miss as a full "no" and never let the score recover, so four responders' scores fell to zero and they stopped being offered jobs at all. Nobody owned the numbers after the previous PM left, so it ran for weeks and support tickets piled up.
+    </div>
+    <div class="statrow">
+      <div class="stat"><span class="big">78% <span class="arrow">→</span> 54%</span><span class="lbl">Offers taken, the week before 4.2 vs. release week</span></div>
+      <div class="stat"><span class="big">2 <span class="arrow">→</span> 38</span><span class="lbl">Missed offers a week, overnight</span></div>
+      <div class="stat"><span class="big">12 <span class="arrow">→</span> 0</span><span class="lbl">Weekly offers for Farlight, one of four responders cut off</span></div>
+      <div class="stat"><span class="big">6 <span class="arrow">→</span> 29</span><span class="lbl">Support tickets a week. 45 about 4.2, all still open</span></div>
+    </div>
+    <div class="grid3">
+      <div class="panel"><h3>The cause</h3><p>A short answer window met a scoring rule that punished a miss as hard as a "no" and never forgot it. The rule was written years ago and sat harmless until 4.2.</p></div>
+      <div class="panel"><h3>The fix</h3><p>Make the rule fair (a miss costs less, scores heal), bring the four back to a neutral score on the same day, and show both handlers and responders when someone goes quiet.</p></div>
+      <div class="panel"><h3>The safeguard</h3><p>Two skills that check every brief and every build before it ships: does someone own it, how will we know it worked, and does the build do what the brief promised?</p></div>
+    </div>
+    <p class="note"><b>Quick terms:</b> a <b>callout</b> is a job. A <b>ping</b> (an "offer") is one callout sent to one responder. They can <b>take</b> it, <b>turn it down</b>, or <b>miss</b> it by not answering in time.</p>
+  </div>
+</section>
+
+<!-- 2 · FRAMEWORK MAP -->
+<section class="slide" id="map" aria-label="How the story is told">
+  <div class="inner">
+    <div class="kicker"><span class="tag red">Reading guide</span><span class="tag">Double Diamond</span></div>
+    <h2 class="title sm">Six issues, four stages</h2>
+    <p class="lede">The Double Diamond splits product work into two halves: first <b>find the right problem</b> (go wide, then narrow), then <b>build the right fix</b> (go wide, then narrow). Each module of this work is one issue of the story.</p>
+    <div class="panel" style="padding:12px">
+      <svg class="dd" viewBox="0 0 1000 300" role="img" aria-label="Double Diamond: Discover and Define find the problem, Develop and Deliver build the fix">
+        <polygon points="20,150 260,30 500,150 260,270" fill="var(--yellow)" fill-opacity=".35" stroke="var(--line)" stroke-width="3"/>
+        <polygon points="500,150 740,30 980,150 740,270" fill="var(--red)" fill-opacity=".14" stroke="var(--line)" stroke-width="3"/>
+        <line x1="260" y1="30" x2="260" y2="270" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <line x1="740" y1="30" x2="740" y2="270" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="5 5"/>
+        <text x="170" y="118" text-anchor="middle">DISCOVER</text>
+        <text x="370" y="118" text-anchor="middle">DEFINE</text>
+        <text x="630" y="118" text-anchor="middle">DEVELOP</text>
+        <text x="830" y="118" text-anchor="middle">DELIVER</text>
+        <text class="iss" x="170" y="144" text-anchor="middle">#1 Origin Story</text>
+        <text class="iss" x="170" y="162" text-anchor="middle">#2 Super Hearing</text>
+        <text class="iss" x="370" y="144" text-anchor="middle">#3 Rewind</text>
+        <text class="iss" x="370" y="162" text-anchor="middle">#4 X-Ray Vision</text>
+        <text class="iss" x="630" y="153" text-anchor="middle">#5 Super Speed</text>
+        <text class="iss" x="830" y="153" text-anchor="middle">#6 Sidekicks</text>
+        <text class="sm" x="175" y="184" text-anchor="middle">wiki · tickets</text>
+        <text class="sm" x="365" y="184" text-anchor="middle">pings · code</text>
+        <text class="sm" x="625" y="184" text-anchor="middle">brief · prototype</text>
+        <text class="sm" x="825" y="184" text-anchor="middle">QA · skills</text>
+        <text class="sm" x="260" y="292" text-anchor="middle">find the right problem</text>
+        <text class="sm" x="740" y="292" text-anchor="middle">build the right fix</text>
+        <line x1="500" y1="34" x2="500" y2="140" stroke="var(--red)" stroke-width="2" stroke-dasharray="4 4"/>
+        <circle cx="500" cy="150" r="8" fill="var(--red)" stroke="var(--line)" stroke-width="2"/>
+        <text class="sm" x="500" y="22" text-anchor="middle" style="fill:var(--red-ink);font-weight:500">the villain is named here</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · ISSUE 1 -->
+<section class="slide" id="m1" aria-label="Issue 1: Origin Story">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #1</span><span class="tag">Discover</span><span class="tag yel">Module 1 · Origin Story</span></div>
+    <h2 class="title sm">"August is always soft." The data says otherwise.</h2>
+    <div class="grid-6-4">
+      <div>
+        <div class="bubble"><span class="who">THE PM ASKED:</span><pre class="prompt">What's contradictory or missing, not just in the company documents, but across Rook's wiki, its database, and the files in my repo?</pre><span class="src">01-origin-story/prompts.md · prompt 1</span></div>
+        <div class="caption"><span class="cap-h">What it found</span>The handoff blamed the drop on a seasonal August dip. The database shows no dip before 4.2: the week of 3 August was the <b>best week of the summer</b>. The fall starts the week 4.2 shipped, driven by missed offers, not by people saying no.</div>
+      </div>
+      <div class="panel">
+        <div class="chart-title">Share of offers taken, per week</div>
+        <p class="note">All 16 responders · 29 Jun to 6 Sep</p>
+        <div id="c-taken"></div>
+        <div class="chart-title" style="margin-top:14px">Missed offers, per week</div>
+        <p class="note">Grey before 4.2, red after. Turned-down offers fell over the same weeks (about 36 → 31 a week).</p>
+        <div id="c-missed"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 · ISSUE 2 -->
+<section class="slide" id="m2" aria-label="Issue 2: Super Hearing">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #2</span><span class="tag">Discover</span><span class="tag yel">Module 2 · Super Hearing</span></div>
+    <h2 class="title sm">147 tickets, one loud signal</h2>
+    <div class="grid-6-4">
+      <div class="panel">
+        <div class="chart-title">Every support ticket, grouped</div>
+        <p class="note"><span style="color:var(--red-ink);font-weight:800">Red</span> = the two groups caused by 4.2. All 45 arrived after the release, and all 45 are still open.</p>
+        <div class="hbars" id="c-tickets" style="margin-top:10px"></div>
+      </div>
+      <div>
+        <div class="bubble"><span class="who">THE PM ASKED:</span><pre class="prompt">Nice, let's layer on.
+
+Use the rook-database connector. Call describe_table on support_tickets, then run_query. There are 147 tickets. Same treatment as before: group them, tell me how many are in each group, and quote one line from each. Count every row, including ones that look unrelated.
+
+Add your findings to the process flow diagram like you did with the interviews before but on the left side of the diagram so you don't write over the findings form the interviews.</pre><span class="src">02-super-hearing/prompts.md · prompt 4</span></div>
+        <div class="caption"><span class="cap-h">What it found</span>Tickets went from about 6 to about 29 a week. Two-thirds say "phone never goes off", one-third "gone before I could answer". The handlers we interviewed filed only one ticket between them, so neither pile alone shows everyone. Only the ping data covers all 16 responders.</div>
+        <p class="note" style="margin-top:12px">This module also produced the backlog: 3 initiatives, 7 epics, 22 stories, no new roadmap lines (<span class="mono">01-origin-story/4.2-recovery-requirements.md</span>).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · ISSUE 3 -->
+<section class="slide" id="m3" aria-label="Issue 3: Rewind">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #3</span><span class="tag">Define</span><span class="tag yel">Module 3 · Rewind</span></div>
+    <h2 class="title sm">Two responders, one rule, opposite fates</h2>
+    <div class="bubble"><span class="who">THE PM ASKED:</span><pre class="prompt">Lastly, can you draw 2 distinct visuals with detailed metrics of the journey for Farlight &amp; The Gale across starting from the week of Jun 29 until current state</pre><span class="src">03-rewind/prompts.md · prompt 16</span></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="chart-title">Offers per week</div>
+        <div class="legend"><span><i style="background:var(--s1)"></i>Farlight (cut off)</span><span><i style="background:var(--s2)"></i>The Gale (overloaded)</span></div>
+        <div id="c-journey-pings"></div>
+      </div>
+      <div class="panel">
+        <div class="chart-title">Routing score at the end of each week (0 to 1)</div>
+        <div class="legend"><span><i style="background:var(--s1)"></i>Farlight</span><span><i style="background:var(--s2)"></i>The Gale</span></div>
+        <div id="c-journey-score"></div>
+      </div>
+    </div>
+    <div class="caption"><span class="cap-h">What it found</span>Both had a rough release week. Farlight missed 4 of 10 offers and The Gale missed 3 of 15. The Gale was busy enough to win the score straight back, while Farlight's score sank to zero within two weeks and Farlight stopped being asked. Their jobs went to busy responders from other areas. The strongest predictor of who got cut off was the share of offers missed in release week (r ≈ −0.81). Behaviour before 4.2 showed no link.</div>
+    <p class="note">Scores replayed offer by offer from the saved data (<span class="mono">03-rewind/pings-rows-used.csv</span>) under the live rule, starting at 0.5 on 29 Jun. This is our replay, not Rook's official score history. Wen is to confirm.</p>
+  </div>
+</section>
+
+<!-- 6 · ISSUE 4 -->
+<section class="slide" id="m4" aria-label="Issue 4: X-Ray Vision">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #4</span><span class="tag">Define</span><span class="tag yel">Module 4 · X-Ray Vision</span></div>
+    <h2 class="title sm">The villain was in the code all along</h2>
+    <div class="grid-6-4">
+      <div style="display:grid;gap:22px">
+        <div class="bubble" style="margin-bottom:0"><span class="who">THE PM ASKED:</span><pre class="prompt">Fill in the blanks for
+Based on what I found, the reason some responders are getting no pings at all is ___, because ___.?</pre><span class="src">04-x-ray-vision/prompts.md · prompt 4</span></div>
+        <div class="panel"><p class="ans">The reason some responders are getting no pings at all is <span class="blank">their routing score hit zero after they missed many of their offers in 4.2's first week</span>, because <span class="blank">the code counts a miss as a full "no" (−0.12, against +0.08 for a yes) and the score never drifts back up</span>.</p>
+        <p class="note" style="margin-top:10px">Our answer, from the routing code in <span class="mono">00-rook/code/dispatch-routing</span> and the ping data.</p></div>
+      </div>
+      <div class="villain">
+        <span class="tag red" style="display:inline-block;margin-bottom:10px">Villain file</span>
+        <h3>THE SILENT PENALTY</h3>
+        <dl>
+          <dt>Origin</dt><dd>Written before Release 4.0. A "make scores recover" to-do has sat in the code since 2019.</dd>
+          <dt>Powers</dt><dd>Treats a missed offer exactly like a "no". Never forgets. Invisible to handlers and responders.</dd>
+          <dt>Dormant</dt><dd>Harmless while people had 90 seconds to answer and almost never missed.</dd>
+          <dt>Trigger</dt><dd>4.2 cut the window to 60 seconds and changed the weights. That's all it changed. Misses jumped and the trap fired.</dd>
+          <dt>Not guilty</dt><dd>Turning jobs down. Halfmoon turned down the most after 4.2 and recovered. Misses decided who was cut off.</dd>
+          <dt>Weakness</dt><dd>A fair rule.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · ISSUE 5 -->
+<section class="slide" id="m5" aria-label="Issue 5: Super Speed">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #5</span><span class="tag">Develop</span><span class="tag yel">Module 5 · Super Speed</span></div>
+    <h2 class="title sm">The fix: fair rule, a way back, no more silence</h2>
+    <div class="grid-6-4">
+      <div class="bubble"><span class="who">THE PM ASKED:</span><pre class="prompt">Perfect, I want to you to update the saved prototype with an option to show distance as you did in the preview.
+
+I also want you to add the score on the responder app with an ability for the responder to simulate how taking, turning down &amp; missing calls can help improve their score.
+
+Lastly, I want you to create an accelerated simulation of what would happen if we would have deployed 4.2 in this was for the impacted responders</pre><span class="src">05-super-speed/prompts.md · prompt 11</span></div>
+      <div class="panel">
+        <h3>Part 1 · A fair rule</h3>
+        <div class="tscroll"><table>
+          <thead><tr><th>Answer</th><th>Today</th><th>Proposed</th></tr></thead>
+          <tbody>
+            <tr><td>Taken</td><td class="mono">+0.08</td><td class="mono pos">+0.08</td></tr>
+            <tr><td>Turned down</td><td class="mono"><s>−0.12</s></td><td class="mono pos">−0.03</td></tr>
+            <tr><td>Missed</td><td class="mono"><s>−0.12</s></td><td class="mono pos">−0.05</td></tr>
+            <tr><td>Bad weeks</td><td>Never fade</td><td class="pos">Heal 20% toward 0.5 each week</td></tr>
+          </tbody>
+        </table></div>
+        <p class="note" style="margin-top:10px"><b>Part 2</b> resets the four to 0.5 on the day the rule ships. <b>Part 3</b> tells both sides when someone goes quiet, so nobody finds out from a ticket.</p>
+      </div>
+    </div>
+    <div class="frame">
+      <div class="frame-bar"><span>▶ Try it: the Fair Routing prototype (handler console, responder app, 4.2 replay)</span>
+        <span><a href="05-super-speed/prototype.html" target="_blank" rel="noopener">Open full screen</a> · <a href="https://claude.ai/artifact/JWPaVtR5uvBSwu2rhmpYVa" target="_blank" rel="noopener">Published copy</a></span></div>
+      <iframe id="proto" title="Fair Routing prototype"></iframe>
+    </div>
+    <div class="grid-6-4">
+      <div class="panel">
+        <div class="chart-title">Projected offers in the week of 28 Sep, if 4.2 had shipped with the fix</div>
+        <div class="legend"><span><i class="sq" style="background:var(--s3)"></i>No fix</span><span><i class="sq" style="background:var(--s1)"></i>Fix, answering habits never recover</span><span><i class="sq" style="background:var(--s2)"></i>Fix, habits recover over 8 weeks</span><span><i class="sq" style="background:transparent;border:2px solid var(--ink);opacity:.5"></i>Usual week</span></div>
+        <div class="dots" id="c-replay"></div>
+      </div>
+      <div class="caption"><span class="cap-h">What the replay says</span>The rule stops the damage, and answering habits decide the recovery. With the fix and habits coming back, all four reach their usual week with a score of 0.90. If they keep missing most offers, even the fair rule leaves them at 4 to 10 a week. That's why Part 3's "you've missed a few offers" message and the Away button matter as much as the rule.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · ISSUE 6 -->
+<section class="slide" id="m6" aria-label="Issue 6: Sidekicks">
+  <div class="inner">
+    <div class="kicker"><span class="issue">ISSUE #6</span><span class="tag">Deliver</span><span class="tag yel">Module 6 · Sidekicks</span></div>
+    <h2 class="title sm">Sidekicks that stop the next 4.2</h2>
+    <div class="grid-6-4">
+      <div>
+        <div class="bubble"><span class="who">THE PM ASKED:</span><pre class="prompt">Make a skill called qa-testing. When I point to the product brief that outlines the requirements &amp; the staging environment where the code build against it is housed, it creates robust acceptance criteria's, performs the tests &amp; generates a document with all findings. Run a test on the Fair Routing brief &amp; assume we've built the prototype in a staging environment.
+
+Ask me questions if you see fit.</pre><span class="src">06-sidekicks/prompts.md · prompt 1</span></div>
+        <div class="caption"><span class="cap-h">What it found</span>It turned the brief into 51 acceptance criteria and clicked through every screen. It caught two problems we'd have shown Helen: Farlight's August numbers differed between two screens, and the score in the app didn't follow our own rule. Both were fixed and re-tested the same day.</div>
+      </div>
+      <div class="panel">
+        <div class="chart-title">QA results: 51 acceptance criteria</div>
+        <div class="legend"><span><i class="sq" style="background:var(--pass)"></i>Pass</span><span><i class="sq" style="background:var(--partly)"></i>Partly</span><span><i class="sq" style="background:var(--fail)"></i>Fail</span><span><i class="sq" style="background:var(--blocked)"></i>Blocked</span></div>
+        <div style="display:grid;gap:12px;margin-top:8px" id="c-qa"></div>
+        <p class="note" style="margin-top:12px">Also found: 8 places the brief was too vague to test, and 9 items only the real system or real people can confirm, each with an owner. Full report: <span class="mono">05-super-speed/qa-findings-fair-routing-brief.md</span></p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>How the skills would have caught 4.2</h3>
+      <div class="tscroll"><table>
+        <thead><tr><th>What went wrong with 4.2</th><th>Skill</th><th>The check that catches it</th></tr></thead>
+        <tbody>
+          <tr><td>Nobody owned the numbers after Priya left on 21 Aug, so the drop ran for weeks.</td><td class="mono">review-checklist</td><td><b>Owner named.</b> A brief with no named owner is flagged before it ships.</td></tr>
+          <tr><td>No target for missed offers or offers per responder, so nobody knew what "worse" looked like.</td><td class="mono">review-checklist</td><td><b>Success measure.</b> "How will we know it worked?" needs a number and a baseline.</td></tr>
+          <tr><td>"Ping timeout tuning" shipped as a flat 90→60s cut, and Availability Confidence dropped out of 4.2 without a word.</td><td class="mono">review-checklist</td><td><b>Scope stays bounded.</b> Flags work that grows or shrinks between the start and the end.</td></tr>
+          <tr><td>Nobody tested what a shorter window does to someone who misses a few offers.</td><td class="mono">qa-testing</td><td><b>Edges and must-nots.</b> Writes criteria like "a bad week never drives a score to zero" and tests them before release.</td></tr>
+          <tr><td>Handlers saw "Available" while the phone stayed silent.</td><td class="mono">qa-testing</td><td><b>Consistency.</b> The same person and number must match on every screen. It caught exactly this in our own prototype.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note" style="margin-top:10px">Honest limit: the skills check briefs and builds. They don't replace Wen's replay on real scores, or recording how long people take to answer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · NEXT ISSUE -->
+<section class="slide" id="next" aria-label="Next issue">
+  <div class="inner">
+    <div class="kicker"><span class="tag red">Next issue</span><span class="tag">What we need</span></div>
+    <h2 class="title sm">To be continued… with your help</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>Decisions for Helen</h3>
+        <ol class="tight">
+          <li>Agree that a miss shouldn't count as a full "no". Direction only; Wen and the PM set the numbers.</li>
+          <li>Approve resetting the four responders to 0.5, shipped with the new rule.</li>
+          <li>Agree to show responders their own score with the what-if, never the ranking.</li>
+          <li>Treat this as the "Ping timeout tuning" Q3 item, and decide whether the handler's Coverage list replaces Availability Confidence.</li>
+        </ol>
+      </div>
+      <div class="panel">
+        <h3>Open, by owner</h3>
+        <ul class="tight">
+          <li><b>Wen:</b> real score history, travel times, the right healing speed, and a full routing replay.</li>
+          <li><b>Wen &amp; Ravi:</b> start recording answer times, and the official weekly numbers.</li>
+          <li><b>Sofia:</b> interview quiet responders, including about seeing their score.</li>
+          <li><b>Supply:</b> sign off on Away time limits.</li>
+          <li><b>Nadia:</b> reply to the 45 open tickets.</li>
+          <li><b>Rule check:</b> at about 10 offers a week, +0.08 per offer fills the score within a week. Worth tuning when the real numbers are set.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>How we'll know it worked: a 4-week pilot by area</h3>
+      <div class="tscroll"><table>
+        <thead><tr><th>Measure</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td>Offers taken, back to pre-4.2</td><td class="mono">≥ 76.6%</td></tr>
+          <tr><td>Offers for each of the four</td><td class="mono">≥ 8 a week</td></tr>
+          <tr><td>Offers missed by the four (pre-4.2: 1–4%)</td><td class="mono">≤ 10%</td></tr>
+          <tr><td>New "phone never goes off" tickets</td><td class="mono">→ 0</td></tr>
+          <tr><td>Time from offer to taken</td><td class="mono">No worse</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <p class="foot">Sources: Rook wiki, the Dispatch database (pings, callouts and 147 support tickets, 29 Jun – 7 Sep), the <span class="mono">dispatch-routing</span> code, four handler interviews, and this repo's prompts. Root causes are inference until Wen and Ravi confirm them. Rook Industries is a fictional company from the Claude Code for PMs course.</p>
+  </div>
+</section>
+
+<nav class="nav" aria-label="Slides">
+  <button type="button" id="prev" aria-label="Previous slide">‹</button>
+  <span class="pos-l" id="pos" aria-live="polite">1 / 10</span>
+  <button type="button" id="next-btn" aria-label="Next slide">›</button>
+</nav>
+<div class="tip" id="tip" role="status"></div>
+
+<!-- a copy of 05-super-speed/prototype.html, embedded so the report works on its own -->
+<script type="text/plain" id="proto-src"><!doctype html>
+<html lang="en" data-version="full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fair Routing Prototype (All changes)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: presenter bar, then one product screen at a time. Console = Coverage (people, problems first) + Callouts (jobs). App = Today + This week, with a full-screen offer and an Away sheet */
+:root{
+  --bg:#e9ecf2; --surface:#ffffff; --surface-2:#f4f6f9; --surface-3:#e6e9f0; --ink:#1b2130; --muted:#5b6476; --faint:#8a93a6; --line:#dde1e8; --frame:#1b2130;
+  --accent:#2f47c8; --accent-soft:#e8ecfb; --on-accent:#ffffff;
+  --bad:#b4442c; --bad-soft:#fbece8; --good:#1f7a55; --good-soft:#e5f4ec; --warn:#8a5d00; --warn-soft:#fbf1dc; --rec:#6a3fb5; --rec-soft:#f1eafb;
+  --busy:#d08a1e; --scrim:rgba(14,17,26,.45); --shadow:rgba(20,25,40,.14);
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1218; --surface:#1a1f29; --surface-2:#202633; --surface-3:#2a3140; --ink:#e7eaf1; --muted:#9aa3b5; --faint:#6f788b; --line:#2e3544; --frame:#3a4253;
+  --accent:#8fa2ff; --accent-soft:#232c4d; --on-accent:#0e1220;
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; --warn:#e9c46a; --warn-soft:#3a3019; --rec:#c3a4f5; --rec-soft:#2e2445;
+  --busy:#e9b25a; --scrim:rgba(0,0,0,.6); --shadow:rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1218; --surface:#1a1f29; --surface-2:#202633; --surface-3:#2a3140; --ink:#e7eaf1; --muted:#9aa3b5; --faint:#6f788b; --line:#2e3544; --frame:#3a4253;
+  --accent:#8fa2ff; --accent-soft:#232c4d; --on-accent:#0e1220;
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; --warn:#e9c46a; --warn-soft:#3a3019; --rec:#c3a4f5; --rec-soft:#2e2445;
+  --busy:#e9b25a; --scrim:rgba(0,0,0,.6); --shadow:rgba(0,0,0,.45); color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 32px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:14px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3,h4,h5{margin:0;font-family:var(--display);text-wrap:balance}
+p{margin:0}
+a{color:var(--accent)}
+[hidden]{display:none!important}
+
+/* presenter */
+.presenter{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:12px}
+.prow{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.prow h1{font-size:18px}
+.badge{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:3px;padding:2px 7px}
+.badge.v{border-style:solid;border-color:var(--accent);color:var(--accent)}
+.vlink{font-size:12.5px}
+.spacer{flex:1}
+.lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface)}
+.seg button{border:none;background:none;padding:6px 14px;font-size:13px}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.seg.big button{padding:8px 16px;font-weight:500}
+.timeline{display:flex;flex-wrap:wrap;align-items:center}
+.tl{background:none;border:none;padding:4px 0;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.tl .d{width:12px;height:12px;border-radius:50%;border:2px solid var(--faint);background:var(--surface)}
+.tl[aria-current="step"]{color:var(--ink);font-weight:600}
+.tl[aria-current="step"] .d{border-color:var(--accent);background:var(--accent)}
+.tl.past .d{border-color:var(--accent)}
+.tline{width:28px;height:2px;background:var(--line);margin:0 8px}
+.caption{color:var(--muted);max-width:95ch}
+.caption b{color:var(--ink);font-weight:600}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 12px;font-size:13px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn[disabled]{opacity:.5;cursor:default}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.small{font-size:12px;color:var(--muted)}
+
+/* console */
+.where{margin:0 0 6px}
+.desk{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative}
+.chrome{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--surface-2);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.url{margin-left:10px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px 10px;font-family:var(--mono);font-size:11px}
+.desk-body{display:grid;grid-template-columns:168px minmax(0,1fr);min-height:600px;position:relative}
+.desk-body.with-col{grid-template-columns:168px minmax(0,1fr) 330px}
+.side{border-right:1px solid var(--line);padding:16px 10px;display:grid;gap:2px;align-content:start;font-size:13px;background:var(--surface-2)}
+.side .logo{font-family:var(--display);font-weight:700;letter-spacing:.1em;font-size:13px;padding:0 9px 12px}
+.side .nav{padding:7px 9px;border-radius:5px;color:var(--muted);background:none;border:none;text-align:left;font-size:13px}
+.side .nav[aria-current="page"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.side .nav.off{cursor:default}
+.side .me{margin-top:18px;padding:10px 9px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.main{padding:18px 22px;display:grid;gap:18px;align-content:start;min-width:0}
+.mhead{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.mhead h2{font-size:20px}
+.mhead .sub{font-size:12.5px;color:var(--muted)}
+.mhead .sub b{color:var(--ink);font-weight:600}
+.banner{border-radius:7px;padding:10px 12px;font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.banner.good{background:var(--good-soft)} .banner.rec{background:var(--rec-soft)}
+.banner b{font-weight:600}
+.banner .ic{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+.banner.good .ic{background:var(--good)} .banner.rec .ic{background:var(--rec)}
+.ghead{display:flex;align-items:baseline;gap:8px;margin:0 0 6px}
+.ghead h3{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.ghead .c{font-family:var(--mono);font-size:12px;color:var(--faint)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:500;font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 10px;border-bottom:1px solid var(--line)}
+.tbl td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl.click tbody tr{cursor:pointer}
+.tbl.click tbody tr:hover td{background:var(--surface-2)}
+.tbl tbody tr.sel td{background:var(--accent-soft)}
+.tbl.click tbody tr.grow{cursor:default}
+.tbl.click tbody tr.grow:hover td{background:none}
+.tbl tr.grow td{border-bottom:none;padding:18px 10px 4px}
+.tbl tbody:first-of-type tr.grow:first-child td{padding-top:10px}
+.tbl th{padding-top:0}
+.who{display:flex;gap:9px;align-items:flex-start}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--good);margin-top:6px;flex:none}
+.sdot.away{background:var(--faint)}
+.nm{font-weight:600}
+.why{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:1px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good)}
+.st.away::before{background:var(--faint)}
+.bar2{position:relative;height:8px;border-radius:4px;background:var(--surface-3);min-width:110px;flex:1}
+.bar2 .base,.bar2 .extra{position:absolute;top:0;bottom:0;border-radius:4px}
+.bar2 .base{left:0;background:var(--accent)}
+.bar2 .extra{background:var(--busy);border-radius:0 4px 4px 0}
+.bar2 .tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55}
+.oc{display:flex;align-items:center;gap:10px;min-width:170px}
+.dots{display:flex;gap:4px;align-items:center;min-width:60px}
+.dots i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dots .taken{background:var(--good)} .dots .declined{background:var(--faint)}
+.dots .missed{border:2px solid var(--bad)} .dots .asking{background:var(--accent)} .dots .withdrawn{border:2px solid var(--faint)}
+.stale{color:var(--bad);font-weight:500}
+.pill{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:3px;white-space:nowrap;display:inline-block}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.ok{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.rec{background:var(--rec-soft);color:var(--rec)}
+.pill.mute{background:var(--surface-3);color:var(--muted)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+.pill.busy{background:var(--warn-soft);color:var(--warn)}
+.chev{color:var(--faint);font-size:16px;text-align:right;width:20px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.emptyg{font-size:13px;color:var(--muted);padding:12px 10px;border:1px dashed var(--line);border-radius:7px}
+.calls{display:grid;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.call{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.call:last-child{border-bottom:none}
+.call .t{font-family:var(--mono);color:var(--muted)}
+.call .pl b{font-weight:600}
+.call .pl span{display:block;font-size:12px;color:var(--muted)}
+.call.live{background:var(--accent-soft)}
+.tagrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.tagrow span{font-size:11px;color:var(--muted);background:var(--surface-2);border-radius:3px;padding:0 6px}
+.asked{font-size:12.5px}
+.asked span{display:block;font-size:11.5px;color:var(--muted)}
+.detail{border-left:1px solid var(--line);padding:18px 16px;display:grid;gap:14px;align-content:start;background:var(--surface);min-width:0}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(440px,100%);border-left:1px solid var(--line);box-shadow:-14px 0 34px var(--shadow);overflow-y:auto;padding:20px 20px 24px;z-index:3}
+.dtop{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.dtop h3{font-size:20px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.story{font-size:13.5px;line-height:1.6}
+.kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.kv.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kv div{background:var(--surface-2);border-radius:6px;padding:7px 9px;min-width:0}
+.kv b{display:block;font-family:var(--mono);font-size:16px;font-weight:500}
+.kv span{font-size:11.5px;color:var(--muted)}
+.chart{display:grid;gap:4px;min-width:0}
+.bars{position:relative;height:110px;display:flex;align-items:flex-end;gap:3px;border-bottom:1px solid var(--line);min-width:0}
+.bars .b{flex:1;min-width:0;border-radius:2px 2px 0 0;background:var(--faint);opacity:.45;min-height:2px;transition:height .5s ease}
+.bars .b.low{background:var(--bad);opacity:.55}
+.bars .b.now{background:var(--accent);opacity:1}
+.bars .b.gap{background:repeating-linear-gradient(45deg,var(--faint) 0 3px,transparent 3px 6px);opacity:.6}
+.bars .usual{position:absolute;left:0;right:0;border-top:1.5px dashed var(--muted)}
+.bars .usual span{position:absolute;right:0;top:-17px;font-size:10.5px;color:var(--muted);font-family:var(--mono);background:var(--surface);padding:0 3px}
+.xl{display:flex;gap:3px}
+.xl span{flex:1;min-width:0;font-size:9.5px;color:var(--muted);text-align:center;font-family:var(--mono);white-space:nowrap}
+.activity{display:grid;gap:6px;font-size:12.5px}
+.activity div{display:flex;gap:8px;justify-content:space-between}
+.activity span{color:var(--muted)}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;background:var(--ink);color:var(--surface);border-radius:7px;padding:9px 14px;font-size:13px;max-width:420px;z-index:5;text-align:center}
+
+/* phone */
+.phone-stage{display:grid;grid-template-columns:minmax(0,1fr) 360px minmax(0,1fr);gap:24px;align-items:start}
+.side-notes{display:grid;gap:10px;align-content:start;padding-top:40px}
+.side-notes .n{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--muted)}
+.side-notes .n b{display:block;color:var(--ink);font-size:13px;margin-bottom:2px}
+.phone{width:360px;border:11px solid var(--frame);border-radius:44px;background:var(--surface);height:740px;display:flex;flex-direction:column;overflow:hidden;position:relative;grid-column:2}
+.sbar{display:flex;justify-content:space-between;padding:10px 22px 4px;font-size:12px;font-weight:600}
+.apphead{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 12px}
+.apphead .w{display:grid}
+.apphead small{font-size:11px;color:var(--muted)}
+.apphead b{font-family:var(--display);font-size:20px}
+.avail{display:flex;align-items:center;gap:7px;background:var(--good-soft);color:var(--good);border:1px solid transparent;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+.avail::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--good)}
+.avail.away{background:var(--surface-3);color:var(--muted)}
+.avail.away::before{background:var(--faint)}
+.pbody{flex:1;overflow-y:auto;padding:4px 14px 16px;display:grid;gap:12px;align-content:start;background:var(--surface-2)}
+.pbody.grouped{gap:20px}
+.grp{display:grid;gap:8px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);background:var(--surface)}
+.tabs button{border:none;background:none;padding:10px 0 14px;font-size:12px;color:var(--muted);display:grid;justify-items:center;gap:3px}
+.tabs button i{width:18px;height:3px;border-radius:2px;background:transparent}
+.tabs button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+.tabs button[aria-pressed="true"] i{background:var(--accent)}
+.pdate{font-size:12px;color:var(--muted);padding-top:6px}
+.strip{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px}
+.strip b{font-family:var(--mono);font-size:16px;font-weight:500}
+.strip .s{flex:1;color:var(--muted)}
+.strip .mini{width:54px;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.strip .mini i{display:block;height:100%;background:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:6px}
+.card h4{font-size:15px}
+.card p{font-size:13px;color:var(--muted)}
+.card.hi{border-color:var(--rec);background:var(--rec-soft)}
+.card.good{border-color:var(--good);background:var(--good-soft)}
+.card.warn{border-color:var(--warn);background:var(--warn-soft)}
+.card.msg{border-color:var(--accent)}
+.card .from{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.card .sep{border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-size:12.5px;color:var(--muted)}
+.offer{background:var(--surface);border:2px solid var(--accent);border-radius:16px;padding:14px;display:grid;gap:9px}
+.offer .k{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tags span{font-size:11.5px;background:var(--surface-2);border-radius:4px;padding:2px 7px;color:var(--muted)}
+.cdbar{height:5px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.cdbar i{display:block;height:100%;background:var(--accent)}
+.oacts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.oacts button{border-radius:11px;padding:10px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+.oacts .take{background:var(--good);border-color:var(--good);color:#fff}
+.fine{font-size:11.5px;color:var(--muted)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.li{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.li:last-child{border-bottom:none}
+.li .t{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.big{display:flex;align-items:baseline;gap:8px}
+.big b{font-family:var(--mono);font-size:40px;font-weight:500;line-height:1}
+.big span{color:var(--muted);font-size:13px}
+.line3{font-size:13px;color:var(--muted)}
+.line3 b{color:var(--ink);font-weight:600}
+.pchart .bars{height:90px}
+.pchart .bars .b{opacity:.35}
+.pchart .bars .b.now{opacity:1}
+.linkbtn{background:none;border:none;padding:0;color:var(--accent);font-size:13px;font-weight:500;text-align:left}
+.replies{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.overlay{position:absolute;left:0;right:0;bottom:0;top:34px;z-index:4}
+.takeover{background:var(--surface);display:flex;flex-direction:column;padding:18px 20px 22px;gap:14px}
+.takeover .hd{background:var(--accent-soft);border-radius:16px;padding:14px;display:grid;gap:6px}
+.takeover .k{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+.takeover h3{font-size:26px}
+.ringwrap{display:grid;place-items:center;position:relative;margin:4px 0}
+.ringwrap svg{transform:rotate(-90deg)}
+.ringwrap .rt{position:absolute;display:grid;justify-items:center}
+.ringwrap .rt b{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1}
+.ringwrap .rt span{font-size:11.5px;color:var(--muted)}
+.whyyou{font-size:13px;background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.whyyou b{font-weight:600}
+.bigacts{display:grid;gap:10px;margin-top:auto}
+.bigacts button{border-radius:14px;padding:14px;font-size:16px;font-weight:600;border:1px solid var(--line);background:var(--surface)}
+.bigacts .take{background:var(--good);border-color:var(--good);color:#fff}
+.sheetwrap{background:var(--scrim);display:flex;align-items:flex-end}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;padding:10px 16px 20px;width:100%;display:grid;gap:8px}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--line);justify-self:center;margin-bottom:6px}
+.sheet h4{font-size:17px}
+.sheet p{font-size:13px;color:var(--muted);margin-bottom:4px}
+.sheet .opt{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left;font-weight:600;font-size:14px}
+.sheet .opt:hover{border-color:var(--accent)}
+.sheet .cancel{border:none;background:none;color:var(--muted);padding:8px}
+.foot{font-size:12px;color:var(--muted)}
+.dchip{display:inline-block;font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;vertical-align:1px}
+.dchip.far{background:var(--warn-soft);color:var(--warn)}
+.route{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.route .ln{flex:1;border-top:2px dashed var(--accent)}
+.route .pt{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.tog{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:12.5px;display:inline-flex;gap:7px;align-items:center}
+.tog::before{content:"";width:9px;height:9px;border-radius:50%;border:2px solid var(--faint)}
+.tog[aria-pressed="true"]{border-color:var(--accent);color:var(--ink)}
+.tog[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent)}
+.smeter{position:relative;height:10px;border-radius:5px;background:var(--surface-3);margin:4px 0 2px}
+.smeter i{display:block;height:100%;border-radius:5px;background:var(--accent);transition:width .4s ease}
+.smeter .neu{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--muted)}
+.smeter .proj{position:absolute;top:-5px;bottom:-5px;width:4px;border-radius:2px;background:var(--good);transition:left .3s ease}
+.simbtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.simbtns button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 4px;font-size:12px;display:grid;gap:1px;justify-items:center}
+.simbtns button b{font-family:var(--mono);font-size:13px;font-weight:500}
+.simbtns .up b{color:var(--good)} .simbtns .dn b{color:var(--warn)}
+.simres{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12.5px;color:var(--muted);min-height:24px}
+.simres .t{font-family:var(--mono);font-size:10.5px;border-radius:3px;padding:0 5px;background:var(--surface-3)}
+.simres b{color:var(--ink);font-family:var(--mono);font-weight:500}
+.rp{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:grid;gap:16px}
+.rprow{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.rprow label{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.rprow input[type=range]{width:140px}
+.rpcharts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.rpc{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:6px;min-width:0}
+.rpc h3{font-size:15px}
+.rpc .cap{font-size:12px;color:var(--muted)}
+.rpc svg{width:100%;height:auto;display:block}
+.rpc .nowln{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.rpc .nowln b{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--ink);margin-right:4px}
+.takeaway{font-size:13.5px;background:var(--surface-2);border-radius:7px;padding:10px 12px}
+.method{font-size:12.5px;color:var(--muted);display:grid;gap:4px;border-top:1px dashed var(--line);padding-top:10px}
+.method b{color:var(--ink);font-weight:600}
+@media (max-width:760px){.rpcharts{grid-template-columns:1fr}}
+@media (max-width:1100px){.desk-body.with-col{grid-template-columns:168px minmax(0,1fr)}.desk-body.with-col .detail{grid-column:1/-1;border-left:none;border-top:1px solid var(--line)}}
+.tscroll{overflow-x:auto;min-width:0}
+.tbl.wide{min-width:540px}
+@media (max-width:900px){.phone-stage{grid-template-columns:1fr}.side-notes{padding-top:0}.phone{grid-column:auto;justify-self:center}
+  .desk-body,.desk-body.with-col{grid-template-columns:minmax(0,1fr)}.desk-body.with-col .detail{grid-column:auto}
+  .side{display:flex;flex-wrap:wrap;gap:4px;border-right:none;border-bottom:1px solid var(--line);padding:8px 10px}.side .logo,.side .me{display:none}}
+@media (max-width:640px){.phone{width:100%;max-width:360px}.tbl .hide-sm{display:none}.tbl.wide{min-width:440px}.drawer{width:100%}.main{padding:14px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="presenter" aria-label="Presenter controls">
+    <div class="prow">
+      <h1>Fair routing prototype</h1><span class="badge v" id="vbadge"></span><span class="badge">Example data · not live</span>
+      <a class="vlink" id="vlink" href="#" hidden></a>
+      <span class="spacer"></span>
+      <div class="seg big" role="group" aria-label="Screen" id="screens"></div>
+    </div>
+    <div class="prow" id="tlrow"><span class="lbl">Timeline</span><div class="timeline" id="timeline"></div></div>
+    <div class="prow"><p class="caption" id="caption"></p><span class="spacer"></span><div class="acts" id="demo"></div></div>
+  </section>
+
+  <section id="screen-handler" aria-label="Handler console">
+    <p class="lbl where">Where: the handler's desktop console</p>
+    <div class="desk">
+      <div class="chrome"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url" id="url">console.rook.app/coverage</span></div>
+      <div class="desk-body" id="desk-body">
+        <nav class="side" aria-label="Console sections" id="nav"></nav>
+        <main class="main" id="console"></main>
+        <aside class="detail" id="detail" hidden></aside>
+      </div>
+      <div id="toast-slot"></div>
+    </div>
+  </section>
+
+  <section id="screen-responder" aria-label="Responder app" hidden>
+    <p class="lbl where">Where: Farlight's phone app</p>
+    <div class="phone-stage">
+      <div class="side-notes" id="notes-left"></div>
+      <div class="phone">
+        <div class="sbar"><span>9:41</span><span class="mono">●●● 5G</span></div>
+        <div class="apphead" id="apphead"></div>
+        <div class="pbody" id="phone"></div>
+        <div class="tabs" id="tabs"></div>
+        <div class="overlay" id="overlay" hidden></div>
+      </div>
+      <div class="side-notes" id="notes-right"></div>
+    </div>
+  </section>
+
+  <section id="screen-replay" aria-label="4.2 replay" hidden>
+    <p class="lbl where">Replay: the four cut-off responders, 29 Jun to 6 Sep, from the saved ping data</p>
+    <div class="rp" id="replay"></div>
+  </section>
+
+  <p class="foot">Built from the Fair Routing Brief. Farlight's "about 1 offer a week, usual 12" is from our analysis. The roster, callouts, other responders and the week-by-week recovery are illustrative.</p>
+</div>
+
+<script>
+const FULL = true;
+const OTHER = FULL ? { href: "prototype-top-5.html", label: "Open the Top 5 version" } : { href: "prototype-all-changes.html", label: "Open the All changes version" };
+
+const LABELS = ["3 Aug", "10 Aug", "17 Aug", "24 Aug", "31 Aug", "Sep–Oct", "2 Nov", "9 Nov", "16 Nov", "23 Nov", "30 Nov"];
+const GAP_INDEX = 5;
+/* Farlight and The Undertow, 3–31 Aug: real weekly pings, same as the replay (RP.r below) */
+const BASE_SERIES = {
+  "Farlight":     [12, 10, 3, 1, 0, 1, 1, 5, 7, 9, 10],
+  "The Undertow": [12, 11, 4, 1, 1, 1, 1, 5, 6, 8, 10],
+  "The Gale":     [13, 14, 17, 19, 19, 19, 19, 19, 17, 15, 14],
+  "Nightwell":    [12, 12, 13, 12, 12, 12, 12, 12, 12, 12, 12]
+};
+const USUAL = { "Farlight": 12, "The Undertow": 12, "The Gale": 13, "Nightwell": 12 };
+const RESPONDERS = Object.keys(USUAL);
+const TAGS = { "Pier 4 alarm": ["Alarm response"], "Harbour district": ["First aid", "Climbing"], "Dockside welfare check": ["Welfare"], "Container yard": ["Climbing"] };
+
+const POINTS = [
+  { key: "before", label: "Before the fix", date: "Mon 2 Nov", week: "Week of 2 Nov", newUI: false, idx: 6,
+    farlight: { offers: 1, taken: 1, declined: 0, missed: 0 },
+    last: { "Farlight": 6, "The Undertow": 5 },
+    caption: "<b>Today's product.</b> Farlight shows as Available but gets about one offer a week instead of 12. Look at both screens: nothing tells anyone why." },
+  { key: "d0", label: "Day 0", date: "Mon 9 Nov", week: "Week of 9 Nov · so far", newUI: true, idx: 7, partial: true,
+    farlight: { offers: 0, taken: 0, declined: 0, missed: 0 },
+    last: { "Farlight": 8, "The Undertow": 6, "The Gale": 1 },
+    caption: "<b>The fix ships.</b> Farlight and The Undertow are back in the rotation, and both sides are told the same day. Send a live offer and switch screens to follow it." },
+  { key: "w2", label: "Week 2", date: "Mon 16 Nov", week: "Week of 16 Nov", newUI: true, idx: 8,
+    farlight: { offers: 7, taken: 6, declined: 1, missed: 0 },
+    last: { "The Undertow": 1 },
+    caption: "<b>Offers are coming back.</b> Farlight is taking most of them, and the busiest responder gets some relief." },
+  { key: "w3", label: "Week 3", date: "Mon 23 Nov", week: "Week of 23 Nov", newUI: true, idx: 9,
+    farlight: { offers: 9, taken: 8, declined: 1, missed: 0 },
+    last: { "The Gale": 1, "Nightwell": 1 },
+    caption: "<b>Nearly there.</b> Farlight is back above 8 offers a week and comes off the Needs a look list." },
+  { key: "w4", label: "Week 4", date: "Mon 30 Nov", week: "Week of 30 Nov", newUI: true, idx: 10,
+    farlight: { offers: 10, taken: 9, declined: 0, missed: 1 },
+    last: { "The Undertow": 1 },
+    caption: "<b>Back to normal.</b> Now try Simulate 3 missed offers to see how the product speaks up early, before anyone goes quiet again." }
+];
+
+const DAY = {
+  before: [
+    { t: "07:50", p: "Pier 4 alarm", who: "The Gale", out: "taken" },
+    { t: "09:15", p: "Dockside welfare check", who: "Nightwell", out: "taken" },
+    { t: "11:30", p: "Harbour district", who: "The Gale", out: "taken" },
+    { t: "13:05", p: "Container yard", who: "The Gale", out: "taken" }
+  ],
+  d0: [{ t: "07:50", p: "Pier 4 alarm", who: "Nightwell", out: "taken" }],
+  w2: [
+    { t: "07:40", p: "Harbour district", who: "Farlight", out: "taken" },
+    { t: "09:15", p: "Pier 4 alarm", who: "Farlight", out: "declined", then: "The Gale" },
+    { t: "11:05", p: "Dockside welfare check", who: "Nightwell", out: "taken" }
+  ],
+  w3: [
+    { t: "08:10", p: "Container yard", who: "Farlight", out: "taken" },
+    { t: "10:30", p: "Harbour district", who: "The Undertow", out: "taken" },
+    { t: "12:45", p: "Pier 4 alarm", who: "Farlight", out: "taken" }
+  ],
+  w4: [
+    { t: "07:55", p: "Harbour district", who: "Farlight", out: "taken" },
+    { t: "09:20", p: "Dockside welfare check", who: "Nightwell", out: "taken" },
+    { t: "11:40", p: "Container yard", who: "Farlight", out: "taken" },
+    { t: "14:10", p: "Pier 4 alarm", who: "The Gale", out: "taken" }
+  ]
+};
+const AWAY_LABEL = { hour: "for 1 hour", today: "until tomorrow", manual: "until they switch back" };
+const AWAY_LABEL_ME = { hour: "for 1 hour", today: "until tomorrow", manual: "until you switch back" };
+
+const TRIP = {
+  "Farlight":     { "Harbour district": 6, "Pier 4 alarm": 5, "Container yard": 7, "Dockside welfare check": 8 },
+  "The Undertow": { "Harbour district": 7, "Pier 4 alarm": 9, "Container yard": 8, "Dockside welfare check": 10 },
+  "The Gale":     { "Harbour district": 19, "Pier 4 alarm": 21, "Container yard": 18, "Dockside welfare check": 17 },
+  "Nightwell":    { "Harbour district": 9, "Pier 4 alarm": 8, "Container yard": 10, "Dockside welfare check": 6 }
+};
+const GALE_TRIP = { before: 17, d0: 17, w2: 15, w3: 9, w4: 8 };
+const trip = (who, place) => (TRIP[who] || {})[place];
+const dchip = min => min == null ? "" : `<span class="dchip ${min >= 15 ? "far" : ""}">${min} min</span>`;
+function avgTrip(n) {
+  if (n === "The Gale") return { v: GALE_TRIP[pt().key], u: 7 };
+  return { v: { "Farlight": 6, "The Undertow": 7, "Nightwell": 8 }[n], u: { "Farlight": 6, "The Undertow": 7, "Nightwell": 8 }[n] };
+}
+
+const NEW_RULE = { taken: 0.08, declined: -0.03, missed: -0.05 };
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const net = f => f.taken * NEW_RULE.taken + f.declined * NEW_RULE.declined + f.missed * NEW_RULE.missed;
+const heal = s => s + (0.5 - s) * 0.2;
+/* Farlight's score replayed with the fair rule: reset to 0.5 on Day 0, each week's answers added, 20% healing at week end.
+   The week of 9 Nov (5 offers) is assumed to be 4 taken, 1 turned down. */
+const WEEK_9_NOV = { taken: 4, declined: 1, missed: 0 };
+const SCORE_START = (() => {
+  const w2 = heal(clamp01(0.5 + net(WEEK_9_NOV)));
+  const w3 = heal(clamp01(w2 + net(POINTS[2].farlight)));
+  const w4 = heal(clamp01(w3 + net(POINTS[3].farlight)));
+  return { before: 0, d0: 0.5, w2, w3, w4 };
+})();
+const pointScore = i => clamp01(SCORE_START[POINTS[i].key] + net(POINTS[i].farlight));
+const score = () => S.score;
+
+/* replay data: weekly pings from 03-rewind/pings-rows-used.csv, scores replayed ping by ping with the live rules from 0.5 on 29 Jun */
+const RP = {"fit":{"a":-0.0081,"b":1.4082},"r":{"Farlight":{"base":12.0,"mix":[0.18,0.18,0.64],"actual":[12,12,11,12,13,12,10,3,1,0],"oldScore":[0.5,0.86,1.0,1.0,1.0,1.0,0.8,0.4,0.0,0.0,0.0],"fairStart":0.77},"The Undertow":{"base":12.0,"mix":[0.21,0.14,0.64],"actual":[12,11,12,13,12,12,11,4,1,1],"oldScore":[0.5,0.86,1.0,1.0,0.96,0.92,1.0,0.32,0.0,0.0,0.0],"fairStart":0.76},"Vesper":{"base":13.8,"mix":[0.29,0.18,0.53],"actual":[14,13,15,14,13,14,12,5,2,1],"oldScore":[0.5,0.88,1.0,1.0,1.0,0.88,0.96,0.68,0.0,0.0,0.0],"fairStart":0.98},"Meteor Mite":{"base":11.2,"mix":[0.21,0.21,0.57],"actual":[11,12,10,11,12,11,10,4,2,1],"oldScore":[0.5,0.58,0.88,0.76,0.84,0.88,1.0,0.56,0.0,0.0,0.0],"fairStart":0.93}}};
+/* share taken / turned down / missed before 4.2, from the same data */
+const RP_PRE = { "Farlight": [0.73, 0.23, 0.04], "The Undertow": [0.77, 0.21, 0.01], "Vesper": [0.81, 0.15, 0.03], "Meteor Mite": [0.69, 0.29, 0.03] };
+const RP_WEEKS = ["29 Jun", "6 Jul", "13 Jul", "20 Jul", "27 Jul", "3 Aug", "10 Aug", "17 Aug", "24 Aug", "31 Aug", "7 Sep", "14 Sep", "21 Sep", "28 Sep"];
+const RP_LAST_DATA = 9, RP_END = RP_WEEKS.length - 1;
+const RP_RULES = { old: { taken: 0.08, declined: -0.12, missed: -0.12 }, fair: NEW_RULE };
+let R = { who: "Farlight", week: 0, playing: false, speed: 1, fair: true, heal: true, conv: 50, rec: 8, started: false };
+let rpTimer = null;
+
+const $ = id => document.getElementById(id);
+let S, timer = null, toastTimer = null, bannerTimer = null;
+
+function fresh(point, keep) {
+  return {
+    screen: keep ? keep.screen : "handler", page: keep ? keep.page : "coverage",
+    hView: keep ? keep.hView : "day", rView: keep ? keep.rView : "today",
+    sel: keep ? keep.sel : null, notesOpen: keep ? keep.notesOpen : false,
+    dist: keep ? keep.dist : true, scoreOn: keep ? keep.scoreOn : true, score: pointScore(point), taps: [],
+    point, away: null, sheet: false, howOpen: false, live: null, today: [],
+    add: { offers: 0, taken: 0, declined: 0, missed: 0 },
+    misses: POINTS[point].farlight.missed, headsUp: false, msgs: [], notes: [], toast: null, pBanner: null
+  };
+}
+
+const pt = () => POINTS[S.point];
+const NU = () => pt().newUI;
+const fc = () => { const f = pt().farlight, a = S.add; return { offers: f.offers + a.offers, taken: f.taken + a.taken, declined: f.declined + a.declined, missed: f.missed + a.missed }; };
+
+function series(name) {
+  const s = BASE_SERIES[name].slice(0, pt().idx + 1);
+  if (name === "Farlight") s[s.length - 1] = fc().offers;
+  if (name === "The Undertow" && pt().partial) s[s.length - 1] = 0;
+  return s;
+}
+const weekOffers = name => series(name)[pt().idx];
+const dayList = () => DAY[pt().key].concat(S.today).sort((a, b) => a.t.localeCompare(b.t));
+
+function todayOutcomes(name) {
+  const r = [];
+  dayList().forEach(c => { if (c.who === name) r.push(c.out); if (c.then === name) r.push("taken"); });
+  return r;
+}
+
+function lastOffer(name) {
+  const mine = dayList().filter(c => c.who === name || c.then === name);
+  if (mine.length) return { text: "Today " + mine[mine.length - 1].t, days: 0 };
+  const d = pt().last[name] != null ? pt().last[name] : 1;
+  return { text: d === 1 ? "Yesterday" : `${d} days ago`, days: d };
+}
+
+function status(name) {
+  if (!NU()) return null;
+  const o = weekOffers(name), u = USUAL[name];
+  if (name === "Farlight" && S.away) return { k: "mute", t: "Away" };
+  if (name === "Farlight" && S.headsUp) return { k: "warn", t: "Missing offers" };
+  if ((name === "Farlight" || name === "The Undertow") && S.point <= 2 && o < 8) return { k: "rec", t: "Recovering" };
+  if (o < u * 0.5) return { k: "bad", t: "Quiet" };
+  if (o > u * 1.3) return { k: "busy", t: "Busy" };
+  return { k: "ok", t: "Normal" };
+}
+const PRIORITY = { "Missing offers": 0, "Quiet": 1, "Recovering": 2, "Busy": 3 };
+const needsLook = n => { const s = status(n); return s && PRIORITY[s.t] != null; };
+
+function reason(n) {
+  const s = status(n), o = weekOffers(n), u = USUAL[n];
+  return {
+    "Recovering": S.point === 1 ? "Back in the rotation today after a quiet spell" : `Offers coming back: ${o} this week, usual ${u}`,
+    "Missing offers": `Missed ${S.misses} offers this week`,
+    "Quiet": `Only ${o} offers this week, usual ${u}`,
+    "Busy": `${o} offers this week, usual ${u}. Watch for fatigue`,
+    "Away": `Away ${AWAY_LABEL[S.away] || ""}`
+  }[s.t] || "";
+}
+
+/* ---------- actions ---------- */
+function goPoint(i) { clearInterval(timer); timer = null; S = fresh(i, S); renderAll(); }
+
+function toast(msg) {
+  S.toast = msg; renderToast();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { S.toast = null; renderToast(); }, 3200);
+}
+function phoneBanner(msg) {
+  S.pBanner = msg; renderPhone();
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { S.pBanner = null; renderPhone(); }, 3200);
+}
+
+function sendOffer() {
+  if (S.live) return;
+  const t = ["10:05", "10:40", "11:20", "12:10", "13:30"][S.today.filter(x => x.live).length % 5];
+  if (S.away) {
+    S.today.push({ t, p: "Harbour district", who: "Nightwell", out: "taken", note: "Farlight away, not asked" });
+    toast("Farlight is Away, so the offer went straight to Nightwell.");
+    renderAll(); return;
+  }
+  const entry = { t, p: "Harbour district", who: "Farlight", out: "asking", live: true };
+  S.today.push(entry); S.live = { left: 60, entry }; S.sheet = false;
+  renderAll();
+  timer = setInterval(() => {
+    S.live.left -= 1;
+    document.querySelectorAll("[data-cd]").forEach(el => el.textContent = S.live.left + (el.dataset.cd === "s" ? "s" : ""));
+    document.querySelectorAll("[data-cdbar]").forEach(el => el.style.width = (S.live.left / 60 * 100) + "%");
+    document.querySelectorAll("[data-ring]").forEach(el => el.style.strokeDashoffset = (339.3 * (1 - S.live.left / 60)).toFixed(1));
+    if (S.live.left <= 0) resolve("missed");
+  }, 100);
+}
+
+function resolve(o) {
+  if (!S.live) return;
+  clearInterval(timer); timer = null;
+  const e = S.live.entry; S.live = null;
+  e.out = o; e.then = o === "declined" ? "Nightwell" : o === "missed" ? "The Gale" : null;
+  S.add.offers++; S.add[o]++;
+  if (o === "missed") S.misses++;
+  S.score = clamp01(S.score + NEW_RULE[o]);
+  const msg = { taken: "Farlight took the Harbour district callout.", declined: "Farlight turned it down. Nightwell took it.", missed: "Farlight didn't answer in time. The Gale took it." }[o];
+  if (S.screen === "handler") toast(msg);
+  else phoneBanner({ taken: "You took it. Your handler has been told.", declined: "Turned down. It's gone to someone else.", missed: "No answer in time. It's gone to someone else." }[o]);
+  checkHeadsUp(); renderAll();
+}
+
+function checkHeadsUp() {
+  if (!NU() || S.misses < 3 || S.headsUp) return;
+  S.headsUp = true;
+  S.msgs.unshift({ k: "warn", h: "You've missed a few offers", b: `${S.misses} this week. If you can't take one, tap Turn down, or set yourself Away when you're busy. That keeps offers coming your way.`, awayBtn: true });
+}
+
+function setAway(v) {
+  S.away = v; S.sheet = false;
+  if (v && S.live) { clearInterval(timer); timer = null; S.live.entry.out = "withdrawn"; S.live.entry.then = "Nightwell"; S.live = null; }
+  S.notes.unshift(v ? `Set Away ${AWAY_LABEL[v]}` : "Set to Available");
+}
+
+const actions = {
+  screen: el => { S.screen = el.dataset.v; renderAll(); },
+  point: el => goPoint(+el.dataset.v),
+  page: el => { S.page = el.dataset.v; S.sel = null; renderConsole(); },
+  hview: el => { S.hView = el.dataset.v; renderConsole(); },
+  rview: el => { S.rView = el.dataset.v; renderPhone(); },
+  select: el => { S.sel = S.sel === el.dataset.v ? null : el.dataset.v; renderConsole(); },
+  close: () => { S.sel = null; renderConsole(); },
+  offer: () => sendOffer(),
+  take: () => resolve("taken"),
+  decline: () => resolve("declined"),
+  notes: () => { S.notesOpen = !S.notesOpen; renderAll(); },
+  how: () => { S.howOpen = !S.howOpen; renderPhone(); },
+  miss3: () => {
+    if (S.away) { toast("Farlight is Away, so no offers are being sent."); return; }
+    ["10:20", "10:45", "11:10"].forEach((t, i) => S.today.push({ t, p: ["Container yard", "Pier 4 alarm", "Dockside welfare check"][i], who: "Farlight", out: "missed", then: ["The Gale", "Nightwell", "The Gale"][i] }));
+    S.add.offers += 3; S.add.missed += 3; S.misses += 3; for (let i = 0; i < 3; i++) S.score = clamp01(S.score + NEW_RULE.missed);
+    checkHeadsUp();
+    if (S.screen === "handler") toast("Farlight missed 3 offers this morning."); else phoneBanner("3 offers went unanswered this morning.");
+    renderAll();
+  },
+  checkin: el => {
+    const who = el.dataset.v;
+    if (who === "Farlight") {
+      S.msgs.unshift({ k: "msg", from: "Your handler", h: "Checking in", b: S.misses > 0 ? "Noticed a few missed offers. Everything OK?" : "Just checking in. Everything OK on your side?", replies: true });
+      S.notes.unshift("Check-in sent");
+      toast("Check-in sent. Switch to the Responder app to see it arrive.");
+      renderConsole();
+    } else toast(`Check-in sent to ${who}.`);
+  },
+  consoleAway: () => {
+    setAway(S.away ? null : "manual");
+    toast(S.away ? "Farlight is now Away. No offers until they're back." : "Farlight is Available again.");
+    renderAll();
+  },
+  avail: () => {
+    if (S.away) { setAway(null); phoneBanner("You're Available. Offers will come through again."); renderAll(); return; }
+    if (!NU()) { setAway("manual"); renderAll(); return; }
+    S.sheet = true; renderPhone();
+  },
+  awayFor: el => {
+    setAway(el.dataset.v);
+    phoneBanner(`You're Away ${AWAY_LABEL_ME[el.dataset.v]}. It won't count against you.`);
+    renderAll();
+  },
+  sheetClose: () => { S.sheet = false; renderPhone(); },
+  toggleDist: () => { S.dist = !S.dist; renderAll(); },
+  toggleScore: () => { S.scoreOn = !S.scoreOn; renderAll(); },
+  simTap: el => { S.taps.push(el.dataset.v); renderPhone(); },
+  simReset: () => { S.taps = []; renderPhone(); },
+  rpWho: el => { R.who = el.dataset.v; renderReplay(); },
+  rpPlay: () => { R.playing ? rpStop() : rpStart(); renderReplay(); },
+  rpRestart: () => { R.week = 0; rpStart(); renderReplay(); },
+  rpSpeed: el => { R.speed = +el.dataset.v; if (R.playing) { rpStop(); rpStart(); } renderReplay(); },
+  rpFair: () => { R.fair = !R.fair; renderReplay(); },
+  rpHeal: () => { R.heal = !R.heal; renderReplay(); },
+  rpRec: el => { R.rec = +el.dataset.v; renderReplay(); },
+  reply: el => {
+    const v = el.dataset.v;
+    const m = S.msgs.find(x => x.replies); if (m) { m.replies = false; m.replied = v; }
+    S.notes.unshift(`Replied: "${v}"`);
+    if (v === "Busy this week" && !S.away) setAway("manual");
+    phoneBanner(v === "Busy this week" ? "Reply sent. You're set to Away for now." : "Reply sent to your handler.");
+    renderAll();
+  }
+};
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (el && !el.disabled && actions[el.dataset.action]) actions[el.dataset.action](el);
+});
+document.addEventListener("input", e => {
+  if (e.target.id === "rp-conv") { R.conv = +e.target.value; $("rp-conv-v").textContent = R.conv + "%"; renderReplayCharts(); }
+});
+document.addEventListener("keydown", e => {
+  const el = e.target.closest && e.target.closest("tr[data-action]");
+  if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); actions.select(el); }
+});
+
+/* ---------- presenter ---------- */
+function renderPresenter() {
+  $("vbadge").textContent = FULL ? "All changes" : "Top 5 changes";
+  $("vlink").href = OTHER.href; $("vlink").textContent = OTHER.label;
+  $("screens").innerHTML = [["handler", "Handler console"], ["responder", "Responder app"], ["replay", "4.2 replay"]]
+    .map(([v, l]) => `<button data-action="screen" data-v="${v}" aria-pressed="${S.screen === v}">${l}</button>`).join("");
+  const rp = S.screen === "replay";
+  $("tlrow").hidden = rp;
+  $("screen-replay").hidden = !rp;
+  if (rp) {
+    $("caption").innerHTML = "<b>Accelerated replay.</b> Ten weeks of real ping data for the four responders 4.2 cut off, plus four projected weeks, next to what the same weeks would have looked like if 4.2 had shipped with the fix. Change the fix settings and play it again.";
+    $("demo").innerHTML = "";
+    $("screen-handler").hidden = true; $("screen-responder").hidden = true;
+    return;
+  }
+  $("timeline").innerHTML = POINTS.map((p, i) =>
+    `${i ? '<span class="tline"></span>' : ""}<button class="tl ${i < S.point ? "past" : ""}" data-action="point" data-v="${i}" ${i === S.point ? 'aria-current="step"' : ""}><span class="d"></span>${p.label} <span class="mono" style="font-size:11px;color:var(--faint)">${p.date.slice(4)}</span></button>`).join("");
+  $("caption").innerHTML = pt().caption;
+  let demo = `<button class="btn primary" data-action="offer" ${S.live ? "disabled" : ""}>Send a live offer to Farlight</button>`;
+  if (NU()) demo += `<button class="btn" data-action="miss3">Simulate 3 missed offers</button>`;
+  demo += `<button class="tog" data-action="toggleDist" aria-pressed="${S.dist}">Distance</button>`;
+  if (NU()) demo += `<button class="tog" data-action="toggleScore" aria-pressed="${S.scoreOn}">Score on app</button>`;
+  if (FULL) demo += `<button class="btn" data-action="notes" aria-pressed="${S.notesOpen}">${S.notesOpen ? "Hide" : "Show"} presenter notes</button><span class="small">Offers count down at 10x speed.</span>`;
+  $("demo").innerHTML = demo;
+  $("screen-handler").hidden = S.screen !== "handler";
+  $("screen-responder").hidden = S.screen !== "responder";
+}
+
+/* ---------- charts ---------- */
+function chart(name, opts = {}) {
+  let s = series(name), labels = LABELS.slice(0, s.length);
+  if (opts.last) { s = s.slice(-opts.last); labels = labels.slice(-opts.last); }
+  const offset = series(name).length - s.length;
+  const u = USUAL[name], max = Math.max(u + 3, ...s);
+  const bars = s.map((v, i) => {
+    const gi = i + offset;
+    let cls = i === s.length - 1 ? "now" : "";
+    if (!opts.gentle && !cls) cls = gi === GAP_INDEX ? "gap" : (v < u * 0.5 ? "low" : "");
+    return `<span class="b ${cls}" style="height:${Math.max(2, v / max * 100)}%" title="${labels[i]}: ${v} offers"></span>`;
+  }).join("");
+  const xl = labels.map((l, i) => `<span>${opts.gentle || i % 2 === 0 || i === labels.length - 1 ? l : ""}</span>`).join("");
+  return `<div class="chart ${opts.gentle ? "pchart" : ""}"><div class="bars">${bars}<span class="usual" style="bottom:${u / max * 100}%"><span>usual ${u}</span></span></div><div class="xl">${xl}</div>${opts.note ? `<span class="small">${opts.note}</span>` : ""}</div>`;
+}
+
+function outcomePill(c) {
+  if (c.out === "asking") return `<span class="pill acc">Asking ${c.who} · <span data-cd="s">${S.live ? S.live.left : 60}s</span></span>`;
+  if (c.out === "taken") return `<span class="pill ok">Taken by ${c.who}</span>`;
+  if (c.out === "declined") return `<span class="pill mute">${c.who} turned down · ${c.then} took it</span>`;
+  if (c.out === "missed") return `<span class="pill bad">${c.who} missed · ${c.then} took it</span>`;
+  if (c.out === "withdrawn") return `<span class="pill mute">${c.who} went Away · ${c.then} took it</span>`;
+  return "";
+}
+
+/* ---------- console ---------- */
+function renderNav() {
+  const item = (v, l) => `<button class="nav" data-action="page" data-v="${v}" ${S.page === v ? 'aria-current="page"' : ""}>${l}</button>`;
+  $("nav").innerHTML = `<div class="logo">ROOK</div>${item("coverage", "Coverage")}${item("callouts", "Callouts")}<span class="nav off">Responders</span><span class="nav off">Supply</span><div class="me">Signed in as handler<br>Harbour sector</div>`;
+  $("url").textContent = `console.rook.app/${S.page}`;
+}
+
+function renderConsole() {
+  renderNav();
+  $("console").innerHTML = S.page === "coverage" ? coverage() : callouts();
+  renderDetail();
+  renderToast();
+}
+
+function renderToast() {
+  $("toast-slot").innerHTML = S.toast && S.screen === "handler" ? `<div class="toast" role="status">${S.toast}</div>` : "";
+}
+
+function viewSeg() {
+  return `<div class="seg" role="group" aria-label="Time window"><button data-action="hview" data-v="day" aria-pressed="${S.hView === "day"}">Day</button><button data-action="hview" data-v="week" aria-pressed="${S.hView === "week"}">Week</button></div>`;
+}
+
+function coverage() {
+  const p = pt(), day = S.hView === "day";
+  const look = RESPONDERS.filter(needsLook).sort((a, b) => PRIORITY[status(a).t] - PRIORITY[status(b).t]);
+  const rest = RESPONDERS.filter(n => !needsLook(n));
+  let sub = `Harbour sector · ${day ? p.date : p.week}`;
+  if (FULL && NU()) sub += ` · <b>${look.length ? `${look.length} of ${RESPONDERS.length} need a look` : "all normal"}</b>`;
+  let h = `<div class="mhead"><div><h2>Coverage</h2><span class="sub">${sub}</span></div>${viewSeg()}</div>`;
+
+  if (!NU()) {
+    const rows = RESPONDERS.map(n => `<tr data-action="select" data-v="${n}" tabindex="0" class="${S.sel === n ? "sel" : ""}"><td class="nm">${n}</td><td><span class="st ${n === "Farlight" && S.away ? "away" : ""}">${n === "Farlight" && S.away ? "Away" : "Available"}</span></td></tr>`).join("");
+    return h + `<table class="tbl click"><thead><tr><th>Responder</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  if (!FULL && S.point === 1) h += `<div class="banner rec"><span class="ic"></span><span><b>Farlight</b> and <b>The Undertow</b> are back in the rotation after a quiet spell. Expect their offers to pick up over the next few weeks.</span></div>`;
+  if (!FULL && S.point === 4 && !S.headsUp) h += `<div class="banner good"><span class="ic"></span><span>Everyone in Harbour sector is getting a normal number of offers this week.</span></div>`;
+
+  const head = `<tr><th>Responder</th><th>${day ? "Offers today" : "Offers this week"}</th><th class="hide-sm">Last offer</th>${S.dist ? '<th class="hide-sm">Avg trip</th>' : ""}<th></th>${FULL ? "<th></th>" : ""}</tr>`;
+  const cols = (FULL ? 5 : 4) + (S.dist ? 1 : 0);
+  const group = (title, list, withWhy) => {
+    const gh = `<tr class="grow"><td colspan="${cols}"><div class="ghead"><h3>${title}</h3><span class="c">${list.length}</span></div></td></tr>`;
+    if (!list.length) return FULL && withWhy ? `<tbody>${gh}<tr class="grow"><td colspan="${cols}"><div class="emptyg">Nothing needs a look ${day ? "today" : "this week"}.</div></td></tr></tbody>` : "";
+    const rows = list.map(n => {
+      const s = status(n), lo = lastOffer(n), away = n === "Farlight" && S.away;
+      const why = withWhy || away ? `<span class="why">${reason(n)}</span>` : "";
+      const pill = FULL && s.t === "Normal" ? "" : `<span class="pill ${s.k}">${s.t}</span>`;
+      return `<tr data-action="select" data-v="${n}" tabindex="0" class="${S.sel === n ? "sel" : ""}">
+        <td><div class="who"><span class="sdot ${away ? "away" : ""}"></span><span><span class="nm">${n}</span>${why}</span></div></td>
+        <td>${day ? dayCell(n) : weekCell(n)}</td>
+        <td class="hide-sm ${lo.days >= 3 ? "stale" : ""}">${lo.text}</td>
+        ${S.dist ? (() => { const at = avgTrip(n); return `<td class="hide-sm">${dchip(at.v)}<span class="why">usual ${at.u}${at.v >= at.u * 1.5 ? " · jobs outside their area" : ""}</span></td>`; })() : ""}
+        <td>${pill}</td>${FULL ? '<td class="chev" aria-hidden="true">›</td>' : ""}</tr>`;
+    }).join("");
+    return `<tbody>${gh}${rows}</tbody>`;
+  };
+  h += `<div class="tscroll"><table class="tbl click wide"><thead>${head}</thead>${group("Needs a look", look, true)}${group("Everyone else", rest, false)}</table></div>`;
+  h += day
+    ? `<div class="legend"><span><i class="dots"><i class="taken"></i></i>Taken</span><span><i class="dots"><i class="declined"></i></i>Turned down</span><span><i class="dots"><i class="missed"></i></i>Missed</span>${FULL ? "" : '<span>Click a responder for details.</span>'}</div>`
+    : `<div class="legend"><span>Bar = offers this week. Tick = their usual week. <span style="color:var(--busy)">Amber</span> = above usual.</span>${FULL ? "" : '<span>Click a responder for details.</span>'}</div>`;
+  return h;
+}
+
+function dayCell(n) {
+  const oc = todayOutcomes(n);
+  const dots = oc.map(o => `<i class="${o}" title="${o}"></i>`).join("");
+  return `<div class="oc"><span class="mono">${oc.length}</span><span class="dots">${dots || '<span class="small">none yet</span>'}</span></div>`;
+}
+
+function weekCell(n) {
+  const o = weekOffers(n), u = USUAL[n], scale = u * 1.5;
+  const base = Math.min(o, u) / scale * 100, extra = Math.max(0, o - u) / scale * 100, tick = u / scale * 100;
+  return `<div class="oc"><span class="bar2"><span class="base" style="width:${base}%"></span>${extra ? `<span class="extra" style="left:${base}%;width:${Math.min(extra, 100 - base)}%"></span>` : ""}<span class="tick" style="left:${tick}%"></span></span><span class="mono">${o}<span style="color:var(--muted)"> / ${u}</span></span></div>`;
+}
+
+function callouts() {
+  const p = pt(), list = dayList();
+  let h = `<div class="mhead"><div><h2>Callouts</h2><span class="sub">Harbour sector · today, ${p.date}</span></div></div>`;
+  if (FULL && NU()) {
+    const rows = list.map(c => {
+      const taken = c.out === "taken" ? c.who : (c.then || "");
+      const askedTxt = c.note ? "<span>away, not asked</span>" : (c.out === "taken" ? "<span>took it</span>" : c.out === "asking" ? `<span>answering · <span data-cd="s">${S.live ? S.live.left : 60}s</span></span>` : `<span>${{ declined: "turned down", missed: "missed", withdrawn: "went Away" }[c.out]}</span>`);
+      return `<tr class="${c.out === "asking" ? "sel" : ""}"><td class="mono" style="color:var(--muted)">${c.t}</td>
+        <td><span class="nm">${c.p}</span><div class="tagrow">${(TAGS[c.p] || []).map(t => `<span>${t}</span>`).join("")}</div></td>
+        <td class="asked">${c.note ? "Farlight" : c.who}${S.dist && !c.note ? " " + dchip(trip(c.who, c.p)) : ""}${askedTxt}</td>
+        <td>${taken ? `<span class="pill ok">${taken}</span>${S.dist ? " " + dchip(trip(taken, c.p)) : ""}` : '<span class="pill acc">Waiting</span>'}</td></tr>`;
+    }).join("");
+    return h + `<div class="tscroll"><table class="tbl wide"><thead><tr><th>Time</th><th>Callout</th><th>Asked</th><th>Taken by</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+  const rows = list.map(c => `<div class="call ${c.out === "asking" ? "live" : ""}"><span class="t">${c.t}</span><span class="pl"><b>${c.p}</b><span>${c.note || "Callout"}</span></span>${outcomePill(c)}</div>`).join("");
+  return h + `<div class="calls">${rows}</div>`;
+}
+
+function story(n) {
+  const s = status(n), o = weekOffers(n), u = USUAL[n];
+  if (n === "The Gale" && s.t === "Busy") return "Well above their usual week since mid-August, picking up jobs nearby responders weren't getting. Watch for fatigue.";
+  if (n === "The Gale") return "Back to a normal load now that nearby responders are getting offers again.";
+  if (s.t === "Away") return `Away ${AWAY_LABEL[S.away]}. Not being offered jobs, and it won't count against them.`;
+  if (s.t === "Missing offers") return `Missed ${S.misses} offers this week. A quick check-in usually helps. If they're busy, set them Away so offers go straight to someone else.`;
+  if (s.t === "Recovering" && S.point === 1) return "Offers dropped sharply in mid-August after a run of missed offers, and stayed low until now. Back in the rotation as of today. Expect offers to pick up over the next few weeks.";
+  if (s.t === "Recovering") return `Offers are coming back: ${o} this week against a usual ${u}. Taking most of them.`;
+  if (n === "Farlight" || n === "The Undertow") return "Back to a normal week after a quiet spell from mid-August to early November.";
+  return "A normal week.";
+}
+
+function renderDetail() {
+  const d = $("detail"), body = $("desk-body");
+  body.classList.remove("with-col"); d.classList.remove("drawer");
+  if (!S.sel || S.page !== "coverage") { d.hidden = true; return; }
+  d.hidden = false;
+  if (FULL) d.classList.add("drawer"); else body.classList.add("with-col");
+  const n = S.sel, away = n === "Farlight" && S.away;
+  let h = `<div class="dtop"><div><h3>${n}</h3><span class="st ${away ? "away" : ""}">${away ? `Away ${AWAY_LABEL[S.away]}` : "Available"}</span></div><button class="btn sm" data-action="close" aria-label="Close details">Close</button></div>`;
+  if (!NU()) {
+    d.innerHTML = h + `<p class="story">Status: Available.</p><p class="small">That's everything the console shows today. Nothing here explains why the phone never goes off, so the handler files a ticket.</p>`;
+    return;
+  }
+  const s = status(n), lo = lastOffer(n), f = n === "Farlight" ? fc() : null;
+  const acts = `<div class="acts"><button class="btn primary" data-action="checkin" data-v="${n}">Check in</button>${n === "Farlight" ? `<button class="btn" data-action="consoleAway">${S.away ? "Set Available" : "Set Away"}</button>` : ""}</div>`;
+  const at = avgTrip(n);
+  const pill = `<div class="row"><span class="pill ${s.k}">${s.t}</span><span class="small">Last offer: <span class="${lo.days >= 3 ? "stale" : ""}">${lo.text}</span></span>${S.dist ? `<span class="small">Avg trip ${dchip(at.v)} usual ${at.u} min</span>` : ""}</div>`;
+  const storyP = `<p class="story">${story(n)}</p>`;
+  const stats = f ? `<div class="kv"><div><b>${f.offers}</b><span>Offers</span></div><div><b>${f.taken}</b><span>Taken</span></div><div><b>${f.declined}</b><span>Turned down</span></div><div><b>${f.missed}</b><span>Missed</span></div></div>` : "";
+  const ch = `<div><span class="lbl">Offers per week</span>${chart(n, { note: "Hatched bar: September–October average. Red: under half their usual." })}</div>`;
+  let act = "";
+  if (n === "Farlight") {
+    const mine = dayList().filter(c => c.who === "Farlight" || (c.note && c.note.includes("Farlight")));
+    const items = S.notes.map(x => `<div><span>${x}</span><span>now</span></div>`).join("") +
+      mine.slice().reverse().map(c => `<div><span>${c.p}: ${{ taken: "taken", declined: "turned down", missed: "missed", asking: "being asked", withdrawn: "went Away" }[c.out] || "not asked"}</span><span class="mono">${c.t}</span></div>`).join("");
+    act = `<div><span class="lbl">Today</span><div class="activity" style="margin-top:6px">${items || "<span>No activity yet today.</span>"}</div></div>`;
+  }
+  d.innerHTML = FULL ? h + pill + acts + storyP + stats + ch + act : h + pill + storyP + stats + ch + acts + act;
+}
+
+/* ---------- responder app ---------- */
+function baseMsg() {
+  const o = fc().offers;
+  return {
+    before: null,
+    d0: { k: "hi", h: "Welcome back", b: "You'll start getting offers again from today. It may take a couple of weeks to get back to your usual pace." },
+    w2: { k: "hi", h: "Your offers are picking up", b: `${o} this week, up from 5 last week. Keep it up.` },
+    w3: { k: "good", h: "Nearly back to your usual pace", b: `${o} offers this week.` },
+    w4: { k: "good", h: "Back to your usual pace", b: `${o} offers this week. Nice work.` }
+  }[pt().key];
+}
+
+function paceText(o) {
+  const u = USUAL.Farlight;
+  return o >= u * 0.67 ? "Right around your usual" : (S.point <= 2 ? "Building back up" : "Below your usual");
+}
+
+function renderPhone() {
+  const nu = NU();
+  const awayTxt = S.away ? `Away${nu && S.away !== "manual" ? " · " + { hour: "1 hr", today: "today" }[S.away] : ""}` : "Available";
+  $("apphead").innerHTML = `<div class="w"><small>Rook · responder</small><b>Farlight</b></div>
+    <button class="avail ${S.away ? "away" : ""}" data-action="avail" aria-label="Availability: ${awayTxt}. Tap to change">${awayTxt}</button>`;
+  $("tabs").innerHTML = [["today", "Today"], ["week", "This week"]]
+    .map(([v, l]) => `<button data-action="rview" data-v="${v}" aria-pressed="${S.rView === v}"><i></i>${l}</button>`).join("");
+
+  let h = "";
+  if (S.pBanner) h += `<div class="card good"><p style="color:var(--ink)">${S.pBanner}</p></div>`;
+  if (S.live && !nu) {
+    h += `<div class="offer" role="alert"><span class="k">New callout</span><h4>Harbour district</h4><div class="tags"><span>About 6 min away</span><span>First aid</span><span>Climbing</span></div>
+      <div class="small"><span data-cd="s">${S.live.left}s</span> to answer</div><div class="cdbar"><i data-cdbar style="width:${S.live.left / 60 * 100}%"></i></div>
+      <div class="oacts"><button class="take" data-action="take">Take it</button><button data-action="decline">Turn down</button></div></div>`;
+  }
+  h += S.rView === "today" ? phoneToday() : phoneWeek();
+  const body = $("phone");
+  body.innerHTML = h;
+  body.classList.toggle("grouped", FULL && nu);
+  renderOverlay();
+  renderNotes();
+}
+
+function renderOverlay() {
+  const ov = $("overlay");
+  if (S.live && NU()) {
+    ov.hidden = false; ov.className = "overlay takeover";
+    ov.innerHTML = `<div class="hd"><span class="k">New callout</span><h3>Harbour district</h3><div class="tags"><span>About 6 min away</span><span>First aid</span><span>Climbing</span></div>${S.dist ? '<div class="route"><span class="pt"></span><span>You</span><span class="ln"></span><span>6 min</span><span class="pt"></span></div>' : ""}</div>
+      <div class="ringwrap"><svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true"><circle cx="66" cy="66" r="54" fill="none" stroke="var(--surface-3)" stroke-width="10"/><circle data-ring cx="66" cy="66" r="54" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="339.3" style="stroke-dashoffset:${(339.3 * (1 - S.live.left / 60)).toFixed(1)}"/></svg>
+        <div class="rt"><b data-cd>${S.live.left}</b><span>seconds</span></div></div>
+      ${FULL ? `<div class="whyyou"><b>Why you:</b> you're the closest available responder${S.dist ? ", 6 min away," : ""} with first aid and climbing.</div>` : '<div class="small" style="text-align:center">Demo speed</div>'}
+      <div class="bigacts"><button class="take" data-action="take">Take it</button><button data-action="decline">Turn down</button></div>
+      <div class="fine" style="text-align:center">Can't make it? Turn down so it goes to someone else straight away.</div>`;
+    return;
+  }
+  if (S.sheet) {
+    ov.hidden = false; ov.className = "overlay sheetwrap";
+    ov.innerHTML = `<div class="sheet" role="dialog" aria-label="Set yourself away"><span class="grab"></span><h4>Going away?</h4><p>You won't get offers while you're away, and it won't count against you.</p>
+      <button class="opt" data-action="awayFor" data-v="hour">For 1 hour</button>
+      <button class="opt" data-action="awayFor" data-v="today">For the rest of today</button>
+      <button class="opt" data-action="awayFor" data-v="manual">Until I switch back</button>
+      <button class="cancel" data-action="sheetClose">Cancel</button></div>`;
+    return;
+  }
+  ov.hidden = true; ov.innerHTML = "";
+}
+
+function msgCard(m, extra) {
+  const replies = m.replies ? `<div class="replies"><button class="btn sm" data-action="reply" data-v="All good">All good</button><button class="btn sm" data-action="reply" data-v="Busy this week">Busy this week</button></div>` : (m.replied ? `<span class="small">You replied: ${m.replied}</span>` : "");
+  const away = m.awayBtn && !S.away ? `<div class="replies"><button class="btn sm" data-action="awayFor" data-v="today">Set Away for today</button></div>` : "";
+  return `<div class="card ${m.k}">${m.from ? `<span class="from">${m.from}</span>` : ""}<h4>${m.h}</h4><p>${m.b}</p>${replies}${away}${extra || ""}</div>`;
+}
+
+const PHONE_LAB = { taken: ["ok", "Taken"], declined: ["mute", "Turned down"], missed: ["mute", "No answer"], withdrawn: ["mute", "Withdrawn"] };
+
+function phoneToday() {
+  const p = pt(), nu = NU();
+  const mine = dayList().filter(c => c.who === "Farlight" && c.out !== "asking");
+  const list = mine.length ? `<div class="list">${mine.map(c => `<div class="li"><span class="t">${c.t}</span><span>${c.p}${S.dist && nu ? " " + dchip(trip("Farlight", c.p)) : ""}</span><span class="pill ${(nu ? PHONE_LAB : { ...PHONE_LAB, missed: ["bad", "Missed"] })[c.out][0]}">${(nu ? PHONE_LAB : { ...PHONE_LAB, missed: ["bad", "Missed"] })[c.out][1]}</span></div>`).join("")}</div>` : "";
+  if (!nu) return `<div class="pdate">${p.date}</div>${S.away ? '<div class="card"><h4>You\'re Away</h4><p>You won\'t receive offers.</p></div>' : ""}<span class="lbl">Offers today</span>${list || '<div class="card"><p>No offers yet today.</p></div>'}`;
+
+  const f = fc(), u = USUAL.Farlight;
+  const strip = FULL ? `<button class="strip" data-action="rview" data-v="week"><span><b>${f.offers}</b></span><span class="s">offers this week · usual ${u}<br>${paceText(f.offers)}${S.scoreOn ? ` · score ${score().toFixed(2)}` : ""}</span><span class="mini"><i style="width:${Math.min(100, f.offers / u * 100)}%"></i></span><span aria-hidden="true">›</span></button>` : "";
+  const awayCard = S.away ? `<div class="card"><h4>You're Away ${AWAY_LABEL_ME[S.away]}</h4><p>No offers while you're away. It won't count against you.</p></div>` : "";
+  const b = baseMsg();
+  let msgs = S.msgs.map(m => msgCard(m)).join("");
+  let offers;
+  if (FULL) {
+    const emptyLine = !mine.length && !S.away ? `<div class="sep">No offers yet today. We'll buzz you when one comes in.</div>` : "";
+    if (b) msgs += msgCard(b, emptyLine); else if (emptyLine) msgs += `<div class="card"><p>No offers yet today. We'll buzz you when one comes in.</p></div>`;
+    offers = mine.length ? `<div class="grp"><span class="lbl">Offers today</span>${list}</div>` : "";
+    return `<div class="grp"><div class="pdate">${p.date}</div>${strip}</div>${awayCard ? `<div class="grp">${awayCard}</div>` : ""}<div class="grp"><span class="lbl">Messages</span>${msgs}</div>${offers}`;
+  }
+  if (b) msgs += msgCard(b);
+  return `<div class="pdate">${p.date}</div>${msgs}${awayCard}<span class="lbl">Offers today</span>${list || '<div class="card"><p>No offers yet today.</p></div>'}`;
+}
+
+function phoneWeek() {
+  const p = pt(), nu = NU(), f = fc(), u = USUAL.Farlight;
+  if (!nu) return `<div class="pdate">${p.week}</div><div class="card"><div class="big"><b>${f.offers}</b><span>offer this week</span></div></div>`;
+  const how = S.howOpen
+    ? `<div class="card"><h4>How offers reach you</h4><p>Offers go first to responders who are close by, free, and have the right skills for the job. Answering offers, even with a no, helps keep them coming. Busy? Set yourself Away: you won't be asked, and it won't count against you.</p><button class="linkbtn" data-action="how">Hide</button></div>`
+    : `<button class="linkbtn" data-action="how">How do offers reach me?</button>`;
+  const summary = `<div class="card"><span class="lbl">Offers this week</span><div class="big"><b>${f.offers}</b><span>usual ${u} · ${paceText(f.offers)}</span></div>
+      <p class="line3"><b>${f.taken}</b> taken · <b>${f.declined}</b> turned down · <b>${f.missed}</b> no answer</p>
+      ${S.dist ? '<p class="line3">Most of your offers this week were within 10 min of you.</p>' : ""}</div>`;
+  const ch = `<div class="card"><span class="lbl">Last 6 weeks</span>${chart("Farlight", { last: 6, gentle: true })}</div>`;
+  return FULL
+    ? `<div class="grp"><div class="pdate">${p.week}</div>${summary}</div>${S.scoreOn ? `<div class="grp">${scoreCard()}</div>` : ""}<div class="grp">${ch}${how}</div>`
+    : `<div class="pdate">${p.week}</div>${summary}${ch}${how}`;
+}
+
+function scoreCard() {
+  const now = score();
+  let s = now;
+  S.taps.forEach(t => s = clamp01(s + NEW_RULE[t]));
+  const d = Math.round((s - now) * 100) / 100;
+  const lab = { taken: "Take", declined: "No", missed: "Miss" };
+  const tapsTxt = S.taps.slice(-10).map(t => `<span class="t">${lab[t]}</span>`).join("");
+  const res = S.taps.length
+    ? `${S.taps.length > 10 ? "…" : ""}${tapsTxt}<span>→</span><b>${s.toFixed(2)}</b><span>(${d >= 0 ? "+" : "−"}${Math.abs(d).toFixed(2)})</span><span class="spacer"></span><button class="linkbtn" data-action="simReset">Reset</button>`
+    : "Tap below to see what your next offers would do.";
+  return `<div class="card"><span class="lbl">Your offer score</span>
+    <div class="big"><b>${now.toFixed(2)}</b><span>out of 1.0 · 0.5 is where everyone starts</span></div>
+    <div class="smeter"><i style="width:${now * 100}%"></i><span class="neu"></span>${S.taps.length ? `<span class="proj" style="left:calc(${s * 100}% - 2px)"></span>` : ""}</div>
+    <p class="line3">A higher score means you're asked sooner when you're one of the closest responders.</p>
+    <span class="lbl" style="margin-top:6px">What if your next offers go like this?</span>
+    <div class="simbtns"><button class="up" data-action="simTap" data-v="taken">Take one<b>+0.08</b></button><button class="dn" data-action="simTap" data-v="declined">Turn one down<b>−0.03</b></button><button class="dn" data-action="simTap" data-v="missed">Miss one<b>−0.05</b></button></div>
+    <div class="simres">${res}</div>
+    <p class="small">Setting yourself Away doesn't change your score. Scores also ease back toward 0.5 over time.</p></div>`;
+}
+
+/* ---------- 4.2 replay ---------- */
+function rpStart() {
+  clearInterval(rpTimer); R.playing = true; R.started = true;
+  if (R.week >= RP_END) R.week = 0;
+  rpTimer = setInterval(() => {
+    if (R.week >= RP_END) { rpStop(); renderReplay(); return; }
+    R.week++; renderReplayCharts();
+  }, 900 / R.speed);
+}
+function rpStop() { clearInterval(rpTimer); rpTimer = null; R.playing = false; }
+
+const rpPings = (d, s) => Math.min(d.base, Math.max(0, d.base * (RP.fit.a + RP.fit.b * s)));
+
+function fixRun(n) {
+  const d = RP.r[n], pre = RP_PRE[n], sc = d.oldScore.slice(0, 7), pg = d.actual.slice(0, 7);
+  let s = R.fair ? d.fairStart : d.oldScore[7];
+  const rule = R.fair ? RP_RULES.fair : RP_RULES.old, c = R.conv / 100;
+  for (let w = 7; w <= RP_END; w++) {
+    sc.push(s);
+    const k = R.rec ? Math.min(1, (w - 6) / R.rec) : 0;
+    const [t, dd, m] = d.mix.map((v, i) => v + (pre[i] - v) * k);
+    const m2 = m * (1 - c), d2 = dd + m * c;
+    const p = rpPings(d, s);
+    pg.push(p);
+    s = clamp01(s + p * (t * rule.taken + d2 * rule.declined + m2 * rule.missed));
+    if (R.heal) s += (0.5 - s) * 0.2;
+  }
+  sc.push(s);
+  return { sc, pg };
+}
+
+function noFixRun(n) {
+  const d = RP.r[n], sc = d.oldScore.slice(), pg = d.actual.slice();
+  let s = sc[sc.length - 1];
+  const [t, dd, m] = d.mix, rule = RP_RULES.old;
+  for (let w = RP_LAST_DATA + 1; w <= RP_END; w++) {
+    const p = rpPings(d, s);
+    pg.push(p);
+    s = clamp01(s + p * (t * rule.taken + dd * rule.declined + m * rule.missed));
+    sc.push(s);
+  }
+  return { sc, pg };
+}
+
+function rpChart(pings, scores, base, upto, fix) {
+  const NW = RP_WEEKS.length, W = 480, H = 210, L = 30, Rr = 34, T = 18, B = 26, pw = W - L - Rr, ph = H - T - B, cw = pw / NW;
+  const yP = v => T + ph - Math.min(v, 22) / 22 * ph, yS = v => T + ph - v * ph;
+  const xc = w => L + (w + 0.5) * cw;
+  let g = "";
+  const px = L + (RP_LAST_DATA + 1) * cw;
+  g += `<rect x="${px}" y="${T - 6}" width="${W - Rr - px}" height="${ph + 6}" fill="var(--surface-2)"/><text x="${px + 4}" y="${T + ph - 6}" font-size="10" fill="var(--muted)">next 4 weeks, projected</text>`;
+  [0, 10, 20].forEach(v => g += `<line x1="${L}" x2="${W - Rr}" y1="${yP(v)}" y2="${yP(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${yP(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--mono)">${v}</text>`);
+  [0, 0.5, 1].forEach(v => g += `<text x="${W - Rr + 6}" y="${yS(v) + 4}" font-size="10" fill="var(--accent)" font-family="var(--mono)">${v.toFixed(1)}</text>`);
+  g += `<line x1="${L}" x2="${W - Rr}" y1="${yP(base)}" y2="${yP(base)}" stroke="var(--muted)" stroke-dasharray="4 3" stroke-width="1"/><text x="${L + 4}" y="${yP(base) - 4}" font-size="10" fill="var(--muted)">usual ${Math.round(base)}</text>`;
+  const rx = L + (6 + 2 / 7) * cw;
+  g += `<line x1="${rx}" x2="${rx}" y1="${T - 4}" y2="${T + ph}" stroke="var(--ink)" stroke-dasharray="3 3" stroke-width="1" opacity=".6"/><text x="${rx + 4}" y="${T + 6}" font-size="10" fill="var(--ink)">4.2${fix ? " + fix" : ""}</text>`;
+  for (let w = 0; w <= upto; w++) {
+    const v = pings[w], low = w >= 7 && v < base * 0.5;
+    const fill = w === upto ? "var(--accent)" : low ? "var(--bad)" : "var(--faint)";
+    g += `<rect x="${xc(w) - cw * 0.3}" y="${yP(v)}" width="${cw * 0.6}" height="${Math.max(1, T + ph - yP(v))}" rx="2" fill="${fill}" opacity="${w === upto ? 1 : 0.55}"><title>${RP_WEEKS[w]}: ${Math.round(v)} pings${w > RP_LAST_DATA ? " (projected)" : ""}</title></rect>`;
+  }
+  const pts = []; for (let w = 0; w <= Math.min(upto + 1, NW); w++) pts.push(`${w === NW ? L + pw : xc(w) - (w === upto + 1 ? cw * 0.5 : 0)},${yS(scores[w])}`);
+  g += `<polyline points="${pts.join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round"/>`;
+  RP_WEEKS.forEach((l, w) => { if (w % 2 === 0) g += `<text x="${xc(w)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="var(--mono)">${l}</text>`; });
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Pings per week as bars and score as a line">${g}</svg>`;
+}
+
+function renderReplay() {
+  const who = Object.keys(RP.r).map(n => `<button data-action="rpWho" data-v="${n}" aria-pressed="${R.who === n}">${n}</button>`).join("");
+  $("replay").innerHTML = `
+    <div class="rprow"><div class="seg" role="group" aria-label="Responder">${who}</div><span class="spacer"></span>
+      <button class="btn primary" data-action="rpPlay">${R.playing ? "Pause" : (R.week >= RP_END ? "Play again" : "Play")}</button>
+      <button class="btn" data-action="rpRestart">Restart</button>
+      <div class="seg" role="group" aria-label="Speed"><button data-action="rpSpeed" data-v="1" aria-pressed="${R.speed === 1}">1x</button><button data-action="rpSpeed" data-v="3" aria-pressed="${R.speed === 3}">3x</button></div></div>
+    <div class="rprow"><span class="lbl">The fix</span>
+      <button class="tog" data-action="rpFair" aria-pressed="${R.fair}">Fair rule (miss −0.05, no −0.03)</button>
+      <button class="tog" data-action="rpHeal" aria-pressed="${R.heal}">Score heals toward 0.5</button>
+      <label for="rp-conv">Missed offers that become a "no" after the heads-up <input type="range" id="rp-conv" min="0" max="100" step="10" value="${R.conv}"> <b id="rp-conv-v" class="mono">${R.conv}%</b></label></div>
+    <div class="rprow"><span class="lbl">Answering habits recover</span>
+      <div class="seg" role="group" aria-label="Answering habits recover"><button data-action="rpRec" data-v="0" aria-pressed="${R.rec === 0}">Never</button><button data-action="rpRec" data-v="8" aria-pressed="${R.rec === 8}">Over 8 weeks</button><button data-action="rpRec" data-v="4" aria-pressed="${R.rec === 4}">Over 4 weeks</button></div>
+      <span class="small">From 17 Aug, after the heads-up, answering moves back toward how they answered before 4.2.</span></div>
+    <div id="rp-charts"></div>
+    <div class="method"><span><b>How this works.</b> Left: real pings for each week from the saved data (to 6 Sep), with the score replayed ping by ping under the rules that were live, starting at 0.5 on 29 Jun (an assumption). After 6 Sep it continues with no fix, projected. Right: the same until 4.2 ships. From then on the fix applies, and from 17 Aug the weekly pings are projected from the score: pings = usual week × 1.41 × score, fitted on all 16 responders after 4.2, and capped at their usual week because they're getting their own area back, not taking anyone else's. Run under the old rule, that model lands within about 3 pings a week of what really happened.</span>
+      <span><b>Assumptions.</b> Answering starts from each responder's own after-4.2 mix (Farlight: 18% taken, 18% turned down, 64% missed) and, if habits recover, moves in a straight line to their before-4.2 mix (Farlight: 73% taken, 23% turned down, 4% missed). The answer window stays at 60s, so a full recovery is optimistic. Healing moves the score 20% of the way to 0.5 each week, which also trims high scores, so a steady score settles near 0.9. The real healing speed is still to agree with Wen. Everything after 6 Sep is projection, not data.</span></div>`;
+  renderReplayCharts();
+}
+
+function renderReplayCharts() {
+  const el = $("rp-charts"); if (!el) return;
+  const d = RP.r[R.who], fx = fixRun(R.who), nf = noFixRun(R.who), w = R.week;
+  const card = (title, cap, pings, scores, fix) => `<div class="rpc"><h3>${title}</h3><span class="cap">${cap}</span>${rpChart(pings, scores, d.base, w, fix)}
+    <div class="nowln"><span><b>${Math.round(pings[w])}</b>pings, week of ${RP_WEEKS[w]}${w > RP_LAST_DATA || (fix && w >= 7) ? " (projected)" : ""}</span><span><b>${scores[w + 1].toFixed(2)}</b>score at week end</span></div></div>`;
+  const rows = Object.keys(RP.r).map(n => {
+    const r = RP.r[n], f = fixRun(n), o = noFixRun(n);
+    return `<tr><td class="nm">${n}</td><td class="mono">${r.actual[RP_LAST_DATA]} → <b>${Math.round(f.pg[RP_LAST_DATA])}</b></td><td class="mono">${Math.round(o.pg[RP_END])} → <b>${Math.round(f.pg[RP_END])}</b></td><td class="mono">${o.sc[RP_END + 1].toFixed(2)} → <b>${f.sc[RP_END + 1].toFixed(2)}</b></td><td class="mono">${Math.round(r.base)}</td></tr>`;
+  }).join("");
+  const end = fx.pg[RP_END];
+  let lastLow = -1, minW = 7;
+  for (let i = 7; i <= RP_END; i++) { if (fx.pg[i] < d.base * 0.9) lastLow = i; if (fx.pg[i] < fx.pg[minW]) minW = i; }
+  const dip = `dips to ${Math.round(fx.pg[minW])} pings in the week of ${RP_WEEKS[minW]}`;
+  let take;
+  if (lastLow === -1) take = `With the fix ${R.who} never drops much below their usual week of ${Math.round(d.base)}, and ends September at ${Math.round(end)} pings with a score of ${fx.sc[RP_END + 1].toFixed(2)}. With no fix they stay at ${Math.round(nf.pg[RP_END])}.`;
+  else if (lastLow < RP_END) take = `With the fix ${R.who} ${dip}, then heals: back to about their usual week (${Math.round(fx.pg[lastLow + 1])} pings) from the week of ${RP_WEEKS[lastLow + 1]}, ending with a score of ${fx.sc[RP_END + 1].toFixed(2)}. With no fix they stay at ${Math.round(nf.pg[RP_END])}.`;
+  else if (end >= d.base * 0.5) take = `${R.who} recovers part of the way: ${Math.round(end)} pings in the week of 28 Sep against a usual ${Math.round(d.base)}, score ${fx.sc[RP_END + 1].toFixed(2)}. With no fix they stay at ${Math.round(nf.pg[RP_END])}. Faster habit recovery or more misses turning into a "no" closes the gap.`;
+  else take = `Not enough: with these settings ${R.who} settles around ${Math.round(end)} pings a week (usual ${Math.round(d.base)}), score ${fx.sc[RP_END + 1].toFixed(2)}. While most offers still go unanswered, the score keeps drifting down. Let habits recover, or raise the share of misses that become a "no".`;
+  el.innerHTML = `<div class="rpcharts">${card("What actually happened", "Real pings to 6 Sep · then no fix, projected", nf.pg, nf.sc, false)}${card("If 4.2 had shipped with the fix", "Same until 12 Aug · projected from 17 Aug", fx.pg, fx.sc, true)}</div>
+    <p class="takeaway">${take}</p>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>Responder</th><th>Pings, week of 31 Aug: real → with fix</th><th>Pings, week of 28 Sep: no fix → with fix</th><th>Score on 4 Oct: no fix → with fix</th><th>Usual week</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderNotes() {
+  const nu = NU(), show = !FULL || S.notesOpen;
+  const left = nu
+    ? [["Today", FULL ? "A one-line weekly status at the top, then messages, then today's offers." : "Messages from the handler, and every offer today with what happened."], ["This week", "Offers against their usual week, the last 6 weeks, and an explanation behind a link."]]
+    : [["Today's app", "A list of offers. No sense of a normal week, and no explanation when offers dry up."]];
+  const right = nu
+    ? [["Try it", "Send a live offer from the bar above. Tap the availability chip to see the Away options. Reply to a handler check-in."],
+       S.scoreOn ? ["Score", "This week shows the responder's score with a what-if simulator. Rankings and the other inputs stay hidden."] : ["What it never shows", "Scores, rankings or the rules behind them. Responders see what's happening and what they can do about it."]]
+    : [["Try it", "Switch to Day 0 on the timeline to see the new app."]];
+  $("notes-left").innerHTML = show ? left.map(([b, t]) => `<div class="n"><b>${b}</b>${t}</div>`).join("") : "";
+  $("notes-right").innerHTML = show ? right.map(([b, t]) => `<div class="n"><b>${b}</b>${t}</div>`).join("") : "";
+}
+
+function renderAll() {
+  renderPresenter(); renderConsole(); renderPhone();
+  if (S.screen === "replay") { renderReplay(); if (!R.started) { rpStart(); renderReplay(); } }
+  else if (R.playing) { rpStop(); }
+}
+
+S = fresh(0);
+renderAll();
+<\/script>
+</body>
+</html>
+</script>
+
+<script>
+/* weekly totals from 03-rewind/pings-rows-used.csv (all 16 responders) */
+const WEEKS = ["29 Jun","6 Jul","13 Jul","20 Jul","27 Jul","3 Aug","10 Aug","17 Aug","24 Aug","31 Aug"];
+const REL = 6; /* 4.2 shipped Wed 12 Aug, in the week of 10 Aug */
+const TAKEN_PCT = [76.7,77.1,76.4,75.0,77.6,77.9,54.2,65.8,66.7,72.7];
+const MISSED = [3,4,6,5,4,2,38,28,24,21];
+const TURNED = [37,35,35,39,34,36,43,26,30,24];
+const JOURNEY = {
+  Farlight: { pings:[12,12,11,12,13,12,10,3,1,0], score:[0.86,1,1,1,1,0.8,0.4,0.04,0,0], missed:[0,0,1,1,0,1,4,2,1,0] },
+  "The Gale": { pings:[13,12,13,14,13,13,15,17,20,21], score:[0.84,1,0.96,1,0.84,1,0.84,1,1,0.96], missed:[1,0,0,1,1,0,3,2,2,2] }
+};
+const TICKETS = [
+  ["Other console issues",42,false],["Phone gone quiet",30,true],["Rook Supply",26,false],["Saved filters",16,false],
+  ["Job gone before I could answer",15,true],["Hard to see",8,false],["Other ping glitches",6,false],["Alert sound",2,false],["Billing",2,false]
+];
+const REPLAY = [
+  { n:"Farlight", usual:12, none:0, never:4, rec:12, sNever:0.25 },
+  { n:"The Undertow", usual:12, none:0, never:5, rec:12, sNever:0.29 },
+  { n:"Vesper", usual:14, none:0, never:10, rec:14, sNever:0.48 },
+  { n:"Meteor Mite", usual:11, none:0, never:5, rec:11, sNever:0.32 }
+];
+const QA = [
+  { label:"First run", pass:43, partly:5, fail:2, blocked:1 },
+  { label:"After fixes", pass:46, partly:3, fail:1, blocked:1 }
+];
+
+const NS = "http://www.w3.org/2000/svg";
+const tip = document.getElementById("tip");
+function showTip(e, html) {
+  tip.innerHTML = html; tip.classList.add("on");
+  const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8), y = Math.max(8, e.clientY - tip.offsetHeight - 12);
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+document.addEventListener("pointermove", e => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  if (t) showTip(e, t.dataset.tip); else tip.classList.remove("on");
+});
+document.addEventListener("pointerleave", () => tip.classList.remove("on"));
+
+/* line chart: one y-axis, release marker, crosshair columns with a tooltip */
+function lineChart(el, { series, yMax, yTicks, fmt, h = 220, endLabels = true }) {
+  const W = 480, H = h, L = 44, R = endLabels ? 92 : 14, T = 16, B = 30, pw = W - L - R, ph = H - T - B, n = WEEKS.length;
+  const x = i => L + i * pw / (n - 1), y = v => T + ph - v / yMax * ph;
+  let g = "";
+  yTicks.forEach(v => g += `<line class="gl" x1="${L}" x2="${L + pw}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmt(v)}</text>`);
+  g += `<line class="ax" x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}"/>`;
+  WEEKS.forEach((w, i) => { if (i % 2 === 0 || i === n - 1) g += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">${w}</text>`; });
+  const rx = x(REL - 1 + 2 / 7);
+  g += `<line class="rel" x1="${rx}" x2="${rx}" y1="${T}" y2="${T + ph}"/><text class="rel-t" x="${rx + 5}" y="${T + 10}">4.2 ships</text>`;
+  series.forEach(s => {
+    g += `<polyline fill="none" stroke="${s.color}" stroke-width="2.5" stroke-linejoin="round" points="${s.values.map((v, i) => `${x(i)},${y(v)}`).join(" ")}"/>`;
+    s.values.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="${s.color}" stroke="var(--panel)" stroke-width="2"/>`);
+    if (endLabels) g += `<text x="${x(n - 1) + 9}" y="${y(s.values[n - 1]) + 4}" style="fill:var(--ink);font-weight:500">${s.name}</text>`;
+  });
+  WEEKS.forEach((w, i) => {
+    const tipHtml = `<b>Week of ${w}</b>` + series.map(s => `<br>${s.name}: ${fmt(s.values[i])}`).join("") + (i === REL ? "<br><i>Release week</i>" : "");
+    g += `<rect class="hit" x="${x(i) - pw / (n - 1) / 2}" y="${T}" width="${pw / (n - 1)}" height="${ph}" data-tip="${tipHtml.replace(/"/g, "&quot;")}"/>`;
+  });
+  el.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${series.map(s => s.name).join(" and ")} by week">${g}</svg>`;
+}
+
+/* bar chart with rounded data ends anchored to the baseline */
+function barChart(el, { values, color, yMax, yTicks, h = 170, tipFn }) {
+  const W = 480, H = h, L = 44, R = 14, T = 16, B = 30, pw = W - L - R, ph = H - T - B, n = values.length, cw = pw / n, bw = Math.min(30, cw * 0.62);
+  const y = v => T + ph - v / yMax * ph;
+  let g = "";
+  yTicks.forEach(v => g += `<line class="gl" x1="${L}" x2="${L + pw}" y1="${y(v)}" y2="${y(v)}"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`);
+  values.forEach((v, i) => {
+    const cx = L + (i + 0.5) * cw, top = y(v), r = Math.min(4, (T + ph - top) / 2), x0 = cx - bw / 2, x1 = cx + bw / 2, base = T + ph;
+    const fill = i >= REL ? color : "var(--s3)";
+    g += `<path d="M${x0},${base} V${top + r} Q${x0},${top} ${x0 + r},${top} H${x1 - r} Q${x1},${top} ${x1},${top + r} V${base} Z" fill="${fill}"/>`;
+    if (i === REL) g += `<text x="${cx}" y="${top - 6}" text-anchor="middle" style="fill:var(--ink);font-weight:500">${v}</text>`;
+    g += `<rect class="hit" x="${L + i * cw}" y="${T}" width="${cw}" height="${ph}" data-tip="${tipFn(i).replace(/"/g, "&quot;")}"/>`;
+    if (i % 2 === 0 || i === n - 1) g += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${WEEKS[i]}</text>`;
+  });
+  g += `<line class="ax" x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}"/>`;
+  const rx = L + (REL + 2 / 7) * cw;
+  g += `<line class="rel" x1="${rx}" x2="${rx}" y1="${T}" y2="${T + ph}"/>`;
+  el.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Missed offers per week">${g}</svg>`;
+}
+
+lineChart(document.getElementById("c-taken"), {
+  series: [{ name: "Taken", color: "var(--s2)", values: TAKEN_PCT }],
+  yMax: 100, yTicks: [0, 25, 50, 75, 100], fmt: v => Math.round(v * 10) / 10 + "%", h: 200, endLabels: false
+});
+barChart(document.getElementById("c-missed"), {
+  values: MISSED, color: "var(--red)", yMax: 40, yTicks: [0, 20, 40],
+  tipFn: i => `<b>Week of ${WEEKS[i]}</b><br>Missed: ${MISSED[i]}<br>Turned down: ${TURNED[i]}`
+});
+lineChart(document.getElementById("c-journey-pings"), {
+  series: [{ name: "Farlight", color: "var(--s1)", values: JOURNEY.Farlight.pings }, { name: "The Gale", color: "var(--s2)", values: JOURNEY["The Gale"].pings }],
+  yMax: 24, yTicks: [0, 6, 12, 18, 24], fmt: v => String(v)
+});
+lineChart(document.getElementById("c-journey-score"), {
+  series: [{ name: "Farlight", color: "var(--s1)", values: JOURNEY.Farlight.score }, { name: "The Gale", color: "var(--s2)", values: JOURNEY["The Gale"].score }],
+  yMax: 1, yTicks: [0, 0.5, 1], fmt: v => v.toFixed(2)
+});
+
+/* tickets */
+const tmax = Math.max(...TICKETS.map(t => t[1]));
+document.getElementById("c-tickets").innerHTML = TICKETS.map(([l, n, hot]) =>
+  `<div class="hb ${hot ? "hot" : ""}" data-tip="<b>${l}</b><br>${n} tickets${hot ? "<br>All after 4.2, all open" : ""}"><span class="lab">${l}</span><span class="track"><span class="fill" style="display:block;width:${n / tmax * 100}%"></span></span><span class="n">${n}</span></div>`).join("");
+
+/* replay dot plot */
+const RMAX = 15;
+const pos = v => (v / RMAX * 100) + "%";
+document.getElementById("c-replay").innerHTML = REPLAY.map(r =>
+  `<div class="drow"><span>${r.n}</span><div class="dtrack">
+    <span class="usual" style="left:${pos(r.usual)}" data-tip="<b>${r.n}</b><br>Usual week: ${r.usual}"></span>
+    <span class="pt" style="left:${pos(r.none)};background:var(--s3)" data-tip="<b>${r.n}</b><br>No fix: ${r.none} offers"></span>
+    <span class="pt" style="left:${pos(r.never)};background:var(--s1)" data-tip="<b>${r.n}</b><br>Fix, habits never recover: ${r.never} offers, score ${r.sNever.toFixed(2)}"></span>
+    <span class="pt" style="left:${pos(r.rec)};background:var(--s2)" data-tip="<b>${r.n}</b><br>Fix, habits recover: ${r.rec} offers, score 0.90"></span>
+  </div></div>`).join("") +
+  `<div class="dscale"><span></span><div><span>0</span><span>5</span><span>10</span><span>15 offers</span></div></div>`;
+
+/* QA stacked bars */
+const keys = [["pass", "Pass"], ["partly", "Partly"], ["fail", "Fail"], ["blocked", "Blocked"]];
+document.getElementById("c-qa").innerHTML = QA.map(q =>
+  `<div class="stackrow"><span>${q.label}</span><div class="stack">${keys.map(([k, l]) =>
+    `<span class="${k}" style="flex:${q[k]}" data-tip="<b>${q.label}</b><br>${l}: ${q[k]}">${q[k] >= 2 ? q[k] : ""}</span>`).join("")}</div></div>`).join("");
+
+/* load the embedded prototype when its slide comes near */
+const proto = document.getElementById("proto");
+new IntersectionObserver((es, o) => {
+  if (es.some(e => e.isIntersecting)) { proto.srcdoc = document.getElementById("proto-src").textContent.replace(/<\\\/script/g, "</script"); o.disconnect(); }
+}, { rootMargin: "600px 0px" }).observe(proto);
+
+/* slide nav */
+const slides = [...document.querySelectorAll(".slide")];
+const posEl = document.getElementById("pos"), prev = document.getElementById("prev"), next = document.getElementById("next-btn");
+let cur = 0;
+function track() {
+  const mid = innerHeight / 2;
+  cur = Math.max(0, slides.findLastIndex(s => s.getBoundingClientRect().top <= mid));
+  posEl.textContent = `${cur + 1} / ${slides.length}`; prev.disabled = cur === 0; next.disabled = cur === slides.length - 1;
+}
+let ticking = false;
+addEventListener("scroll", () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { ticking = false; track(); }); } }, { passive: true });
+addEventListener("resize", track); track();
+const go = i => slides[Math.max(0, Math.min(slides.length - 1, i))].scrollIntoView({ block: "start" });
+prev.onclick = () => go(cur - 1); next.onclick = () => go(cur + 1);
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("iframe,input,textarea")) return;
+  if (["ArrowRight", "PageDown"].includes(e.key) || (e.key === " " && !e.shiftKey)) { e.preventDefault(); go(cur + 1); }
+  if (["ArrowLeft", "PageUp"].includes(e.key) || (e.key === " " && e.shiftKey)) { e.preventDefault(); go(cur - 1); }
+});
+</script>
+</body>
+</html>
