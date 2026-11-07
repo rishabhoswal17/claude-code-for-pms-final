@@ -360,9 +360,10 @@ const OTHER = FULL ? { href: "prototype-top-5.html", label: "Open the Top 5 vers
 
 const LABELS = ["3 Aug", "10 Aug", "17 Aug", "24 Aug", "31 Aug", "Sep–Oct", "2 Nov", "9 Nov", "16 Nov", "23 Nov", "30 Nov"];
 const GAP_INDEX = 5;
+/* Farlight and The Undertow, 3–31 Aug: real weekly pings, same as the replay (RP.r below) */
 const BASE_SERIES = {
-  "Farlight":     [13, 9, 4, 2, 1, 1, 1, 5, 7, 9, 10],
-  "The Undertow": [12, 8, 3, 1, 1, 1, 1, 5, 6, 8, 10],
+  "Farlight":     [12, 10, 3, 1, 0, 1, 1, 5, 7, 9, 10],
+  "The Undertow": [12, 11, 4, 1, 1, 1, 1, 5, 6, 8, 10],
   "The Gale":     [13, 14, 17, 19, 19, 19, 19, 19, 17, 15, 14],
   "Nightwell":    [12, 12, 13, 12, 12, 12, 12, 12, 12, 12, 12]
 };
@@ -435,10 +436,21 @@ function avgTrip(n) {
   return { v: { "Farlight": 6, "The Undertow": 7, "Nightwell": 8 }[n], u: { "Farlight": 6, "The Undertow": 7, "Nightwell": 8 }[n] };
 }
 
-const SCORE_BASE = { before: 0, d0: 0.5, w2: 0.65, w3: 0.71, w4: 0.76 };
 const NEW_RULE = { taken: 0.08, declined: -0.03, missed: -0.05 };
 const clamp01 = v => Math.max(0, Math.min(1, v));
-const score = () => clamp01(SCORE_BASE[pt().key] + S.scoreAdj);
+const net = f => f.taken * NEW_RULE.taken + f.declined * NEW_RULE.declined + f.missed * NEW_RULE.missed;
+const heal = s => s + (0.5 - s) * 0.2;
+/* Farlight's score replayed with the fair rule: reset to 0.5 on Day 0, each week's answers added, 20% healing at week end.
+   The week of 9 Nov (5 offers) is assumed to be 4 taken, 1 turned down. */
+const WEEK_9_NOV = { taken: 4, declined: 1, missed: 0 };
+const SCORE_START = (() => {
+  const w2 = heal(clamp01(0.5 + net(WEEK_9_NOV)));
+  const w3 = heal(clamp01(w2 + net(POINTS[2].farlight)));
+  const w4 = heal(clamp01(w3 + net(POINTS[3].farlight)));
+  return { before: 0, d0: 0.5, w2, w3, w4 };
+})();
+const pointScore = i => clamp01(SCORE_START[POINTS[i].key] + net(POINTS[i].farlight));
+const score = () => S.score;
 
 /* replay data: weekly pings from 03-rewind/pings-rows-used.csv, scores replayed ping by ping with the live rules from 0.5 on 29 Jun */
 const RP = {"fit":{"a":-0.0081,"b":1.4082},"r":{"Farlight":{"base":12.0,"mix":[0.18,0.18,0.64],"actual":[12,12,11,12,13,12,10,3,1,0],"oldScore":[0.5,0.86,1.0,1.0,1.0,1.0,0.8,0.4,0.0,0.0,0.0],"fairStart":0.77},"The Undertow":{"base":12.0,"mix":[0.21,0.14,0.64],"actual":[12,11,12,13,12,12,11,4,1,1],"oldScore":[0.5,0.86,1.0,1.0,0.96,0.92,1.0,0.32,0.0,0.0,0.0],"fairStart":0.76},"Vesper":{"base":13.8,"mix":[0.29,0.18,0.53],"actual":[14,13,15,14,13,14,12,5,2,1],"oldScore":[0.5,0.88,1.0,1.0,1.0,0.88,0.96,0.68,0.0,0.0,0.0],"fairStart":0.98},"Meteor Mite":{"base":11.2,"mix":[0.21,0.21,0.57],"actual":[11,12,10,11,12,11,10,4,2,1],"oldScore":[0.5,0.58,0.88,0.76,0.84,0.88,1.0,0.56,0.0,0.0,0.0],"fairStart":0.93}}};
@@ -458,7 +470,7 @@ function fresh(point, keep) {
     screen: keep ? keep.screen : "handler", page: keep ? keep.page : "coverage",
     hView: keep ? keep.hView : "day", rView: keep ? keep.rView : "today",
     sel: keep ? keep.sel : null, notesOpen: keep ? keep.notesOpen : false,
-    dist: keep ? keep.dist : true, scoreOn: keep ? keep.scoreOn : true, scoreAdj: 0, taps: [],
+    dist: keep ? keep.dist : true, scoreOn: keep ? keep.scoreOn : true, score: pointScore(point), taps: [],
     point, away: null, sheet: false, howOpen: false, live: null, today: [],
     add: { offers: 0, taken: 0, declined: 0, missed: 0 },
     misses: POINTS[point].farlight.missed, headsUp: false, msgs: [], notes: [], toast: null, pBanner: null
@@ -556,7 +568,7 @@ function resolve(o) {
   e.out = o; e.then = o === "declined" ? "Nightwell" : o === "missed" ? "The Gale" : null;
   S.add.offers++; S.add[o]++;
   if (o === "missed") S.misses++;
-  S.scoreAdj += NEW_RULE[o];
+  S.score = clamp01(S.score + NEW_RULE[o]);
   const msg = { taken: "Farlight took the Harbour district callout.", declined: "Farlight turned it down. Nightwell took it.", missed: "Farlight didn't answer in time. The Gale took it." }[o];
   if (S.screen === "handler") toast(msg);
   else phoneBanner({ taken: "You took it. Your handler has been told.", declined: "Turned down. It's gone to someone else.", missed: "No answer in time. It's gone to someone else." }[o]);
@@ -591,7 +603,7 @@ const actions = {
   miss3: () => {
     if (S.away) { toast("Farlight is Away, so no offers are being sent."); return; }
     ["10:20", "10:45", "11:10"].forEach((t, i) => S.today.push({ t, p: ["Container yard", "Pier 4 alarm", "Dockside welfare check"][i], who: "Farlight", out: "missed", then: ["The Gale", "Nightwell", "The Gale"][i] }));
-    S.add.offers += 3; S.add.missed += 3; S.misses += 3; S.scoreAdj += 3 * NEW_RULE.missed;
+    S.add.offers += 3; S.add.missed += 3; S.misses += 3; for (let i = 0; i < 3; i++) S.score = clamp01(S.score + NEW_RULE.missed);
     checkHeadsUp();
     if (S.screen === "handler") toast("Farlight missed 3 offers this morning."); else phoneBanner("3 offers went unanswered this morning.");
     renderAll();
