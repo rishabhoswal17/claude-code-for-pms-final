@@ -167,3 +167,8 @@ month.
 - Marcus's 14 Aug question: the score carries pre-release history, but the 1.0 ceiling had wiped old turn-downs; post-release turn-downs didn't sink anyone (Halfmoon turned down most and recovered). Misses decided it. Intent still for Wen/Helen.
 - Proposed score (Option A): taken +0.08, turned down −0.03, missed −0.05, keeping 60s. Replay: cut-off four end 0.67–0.75 instead of 0; projected 8–11 pings/wk instead of 0–1. Option B (no −0.05, miss −0.03) looks similar on paper but rewards ignoring pings. Projection model fitted to actuals, off by ~3 pings/responder/week.
 - Test plan: record answer times first, full routing replay with Wen, pilot by area or alternating weeks for 4 weeks. The four already at zero need a separate reset decision.
+
+**Recap after Module 4:**
+- Correction: the cut-off four missed 44–63% of their release-week pings (71% was The Undertow's first three days only).
+- Data, code and tickets agree on the order: misses first, then the drop in pings, then tickets. Still inference: the scores (my replay) and whether 4.2 was meant to work this way.
+- Open, by owner: Wen (real score history, travel times, full routing replay); Wen/Ravi (record answer times, official weekly numbers); me, Helen and Marcus (should a miss count as a no?); me and Wen (reset the four at zero?); Helen (Availability Confidence); Nadia (reply to 45 open ping tickets).

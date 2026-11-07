@@ -74,3 +74,7 @@ Outline the outcome in a line chart for each responder based on how you think th
 ### 13.
 
 Update this to 2 distinct line chart diagrams for each hypothesis while keeping x-axis to be a timeline distribution in weeks starting from Jun 29 till current state & y-axis as individual responders
+
+### 14.
+
+Let's recap what we've learnt so far, shall we?
