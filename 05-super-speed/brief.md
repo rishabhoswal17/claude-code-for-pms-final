@@ -8,7 +8,7 @@ Three parts, shipped in this order. First make the routing rule fair. Then bring
 
 **1** The engine · **2** The healing journey · **3** The silence
 
-**A click-through prototype goes with this brief** (`05-super-speed/prototype.html`). It has the handler console, the responder app, and a replay of 4.2 for the four responders it cut off. Everything below is on those screens.
+**A click-through prototype goes with this brief:** [Fair Routing Prototype](https://claude.ai/artifact/JWPaVtR5uvBSwu2rhmpYVa) (source: `05-super-speed/prototype.html`). It has the handler console, the responder app, and a replay of 4.2 for the four responders it cut off. Everything below is on those screens.
 
 ---
 
