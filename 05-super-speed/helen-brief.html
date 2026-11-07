@@ -1,0 +1,168 @@
+<title>Quiet Responder Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a dispatch-slip memo — one column, a step strip for the story, three panels for the proposal, two lists for asks */
+:root{
+  --bg:#f5f6f8; --paper:#ffffff; --ink:#1b2130; --muted:#5b6476; --line:#dfe2e8;
+  --accent:#2f47c8; --accent-soft:#e8ecfb;
+  --bad:#b4442c; --bad-soft:#fbece8; --good:#1f7a55; --good-soft:#e5f4ec;
+  --display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151c; --paper:#1a1f29; --ink:#e7eaf1; --muted:#9aa3b5; --line:#2c3341;
+  --accent:#8fa2ff; --accent-soft:#232c4d;
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12151c; --paper:#1a1f29; --ink:#e7eaf1; --muted:#9aa3b5; --line:#2c3341;
+  --accent:#8fa2ff; --accent-soft:#232c4d;
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px}
+.page{max-width:900px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:28px clamp(18px,4vw,40px);display:grid;gap:26px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+h1{font-size:clamp(24px,3.4vw,30px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+h3{font-size:16px;font-weight:700}
+p{margin:0}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.slip{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--mono);font-size:12px;color:var(--muted);border-bottom:1px dashed var(--line);padding-bottom:12px}
+.slip b{color:var(--ink);font-weight:500}
+.lede{display:grid;gap:10px;max-width:68ch}
+.ask{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);font-style:italic}
+.answer{font-size:16.5px}
+.chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.step{background:var(--bg);border-radius:4px;padding:10px 11px;display:grid;gap:4px;align-content:start;position:relative}
+.step .n{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--bad)}
+.step p{font-size:13px;color:var(--muted)}
+.step strong{font-size:13.5px;color:var(--ink);font-weight:600}
+.note{font-size:13px;color:var(--muted);margin-top:8px}
+.build{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.panel{border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.panel > p{font-size:13.5px;color:var(--muted)}
+.rule{width:100%;border-collapse:collapse;font-size:13px}
+.rule td{padding:5px 0;border-bottom:1px solid var(--line)}
+.rule td:not(:first-child){text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.rule .was{color:var(--muted);text-decoration:line-through}
+.rule .now{color:var(--good);font-weight:500}
+.lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.mock{border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.45;display:grid;gap:3px}
+.mock.today{background:var(--bg);color:var(--muted);border:1px dashed var(--line)}
+.mock.new{background:var(--accent-soft);color:var(--ink)}
+.mock .h{font-weight:600}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.pill{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;white-space:nowrap}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.ok{background:var(--good-soft);color:var(--good)}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+ul,ol{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14px}
+li span{color:var(--muted)}
+.who{font-family:var(--mono);font-size:11.5px;color:var(--accent);white-space:nowrap}
+.measures{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.m{background:var(--bg);border-radius:4px;padding:10px 11px;display:grid;gap:2px}
+.m .v{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--good)}
+.m p{font-size:12.5px;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);border-top:1px dashed var(--line);padding-top:12px}
+@media (max-width:760px){.chain{grid-template-columns:repeat(2,minmax(0,1fr))}.build,.two{grid-template-columns:1fr}.measures{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:420px){.chain,.measures{grid-template-columns:1fr}}
+</style>
+
+<main class="page">
+  <div class="slip">
+    <span>To <b>Helen Achebe</b></span><span>From <b>Rook Dispatch PM</b></span><span>Date <b>7 Nov 2026</b></span><span>Re <b>Release 4.2, quiet responders</b></span><span>Status <b>Draft for discussion</b></span>
+  </div>
+
+  <section class="lede">
+    <h1>Bringing quiet responders back, fairly and visibly</h1>
+    <p class="ask">You asked what we'd build instead, seen by the people it happens to, before anyone touches the code.</p>
+    <p class="answer">Short answer: change the rule that quietly pushed some responders to the back of the line, then let responders and handlers <em>see</em> when someone is going quiet, so it never runs for three months unnoticed again.</p>
+  </section>
+
+  <section>
+    <h2>What happened</h2>
+    <div class="chain">
+      <div class="step"><span class="n">90s → 60s</span><strong>4.2 shortens the answer window</strong><p>Responders get less time to answer a job offer (a "ping").</p></div>
+      <div class="step"><span class="n">~4 → ~30</span><strong>Missed pings a week</strong><p>The four hit hardest missed 44–63% in release week.</p></div>
+      <div class="step"><span class="n">0.84 → 0</span><strong>Each miss counted as a "no"</strong><p>The penalty never fades. Farlight's score hit zero by 28 Aug.</p></div>
+      <div class="step"><span class="n">12 → ~1</span><strong>Pings a week for the cut-off four</strong><p>Farlight, The Undertow, Vesper, Meteor Mite. Their areas' jobs went to busy outsiders.</p></div>
+      <div class="step"><span class="n">45 open</span><strong>Handlers find out late</strong><p>"Phone never goes off" tickets arrive 1–2 weeks after. Nobody owns the numbers.</p></div>
+    </div>
+    <p class="note">Overall, pings taken fell from 76.6% to 64.0%. The "miss = no" and "never fades" rules are older than 4.0. 4.2 didn't create them, it woke them up. Turn-downs actually fell after 4.2. Misses decided who got cut off.</p>
+  </section>
+
+  <section>
+    <h2>What we'd build</h2>
+    <div class="build">
+      <div class="panel">
+        <span class="tag">1 · The fair rule</span>
+        <h3>A miss costs far less, and nobody stays stuck</h3>
+        <table class="rule" aria-label="Score change per answer, today versus proposed">
+          <tr><td class="lbl">Answer</td><td class="lbl">Today</td><td class="lbl">Proposed</td></tr>
+          <tr><td>Taken</td><td>+0.08</td><td class="now">+0.08</td></tr>
+          <tr><td>Turned down</td><td class="was">−0.12</td><td class="now">−0.03</td></tr>
+          <tr><td>Missed</td><td class="was">−0.12</td><td class="now">−0.05</td></tr>
+        </table>
+        <p>Saying no costs less than ignoring, so tapping "no" is always the better move. Scores ease back toward neutral over time. The four already at zero get a one-off reset.</p>
+        <p><b class="mono">8–11</b> pings a week for the four in our replay, instead of 0–1 (±3).</p>
+      </div>
+
+      <div class="panel">
+        <span class="tag">2 · What a responder feels</span>
+        <h3>Warned early, told when they're back</h3>
+        <span class="lbl">Today</span>
+        <div class="mock today"><span class="h">Nothing</span>Fewer offers, no explanation. Feels like being dropped.</div>
+        <span class="lbl">With this</span>
+        <div class="mock new"><span class="h">Heads up</span>You've missed 3 offers this week, so you may get fewer for a while. Busy? Set yourself away. It won't count against you.</div>
+        <div class="mock new"><span class="h">You're back in the rotation</span>Thanks for taking the last two.</div>
+      </div>
+
+      <div class="panel">
+        <span class="tag">3 · What a handler sees</span>
+        <h3>Quiet is visible before it's a ticket</h3>
+        <span class="lbl">Today</span>
+        <div class="mock today"><div class="row"><span class="h">Farlight</span><span>Available</span></div>Looks fine. The phone just never goes off.</div>
+        <span class="lbl">With this</span>
+        <div class="mock new"><div class="row"><span class="h">Farlight</span><span class="pill bad">Quiet</span></div><div class="row"><span>1 ping this week</span><span class="mono">usual 12</span></div>Most likely cause: missed offers. Check in or update availability.</div>
+        <p>Example uses Farlight's real numbers. Kip runs several responders, so each gets their own alert sound (Kip's own ask).</p>
+      </div>
+    </div>
+    <p class="note">Plus one guardrail: an owner (Ravi's weekly numbers) and an automatic flag when anyone's pings drop by half.</p>
+  </section>
+
+  <section class="two">
+    <div>
+      <h2>Before we ship, we need to know</h2>
+      <ul>
+        <li>Were misses slow answers or pings that never arrived? <span>We record neither answer times nor delivery.</span> <span class="who">Wen</span></li>
+        <li>Was "miss = no" and the 60s window intended, and why? <span>Marcus asked on 14 Aug, still unanswered.</span> <span class="who">Wen, you</span></li>
+        <li>Real score history and travel times. <span>Every score above is our replay.</span> <span class="who">Wen</span></li>
+        <li>What a quiet responder actually wants. <span>We've only interviewed handlers so far.</span> <span class="who">Sofia</span></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Decisions I need from you</h2>
+      <ol>
+        <li>Agree that a miss shouldn't count as a full "no". <span>Direction only. Wen and I set the numbers.</span></li>
+        <li>Approve a one-off reset for the four responders at zero.</li>
+        <li>Treat this as the "Ping timeout tuning" Q3 item, and decide if the quiet-responder card replaces Availability Confidence.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>Next four weeks, and how we'll know it worked</h2>
+    <p style="font-size:14px;margin-bottom:10px">Start recording answer times now. Replay routing with Wen. Talk to two responders. Click-through prototype of both screens. Then pilot by area for four weeks with a small group.</p>
+    <div class="measures">
+      <div class="m"><span class="v">≥ 76.6%</span><p>Pings taken, back to pre-4.2</p></div>
+      <div class="m"><span class="v">≥ 8 / wk</span><p>Pings for each of the cut-off four</p></div>
+      <div class="m"><span class="v">→ 0</span><p>New "phone never goes off" tickets</p></div>
+      <div class="m"><span class="v">No worse</span><p>Time from ping to taken</p></div>
+    </div>
+  </section>
+
+  <p class="foot">Sources: pings, callouts and tickets in the Dispatch database (29 Jun–7 Sep), the routing code, 147 support tickets and September interviews. Score figures and projections are our own replay, pending Wen's real data. No change to Rook Supply's availability feed is planned. If that changes, Supply signs off first.</p>
+</main>
