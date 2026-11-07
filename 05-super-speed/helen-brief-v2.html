@@ -3,11 +3,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: dispatch-slip memo in three numbered parts (engine, healing, silence) that ship in that order */
+/* Layout: dispatch-slip memo in three numbered parts (engine, healing, silence), then the replay evidence and the asks */
 :root{
   --bg:#f5f6f8; --paper:#ffffff; --ink:#1b2130; --muted:#5b6476; --line:#dfe2e8;
   --accent:#2f47c8; --accent-soft:#e8ecfb;
-  --bad:#b4442c; --bad-soft:#fbece8; --good:#1f7a55; --good-soft:#e5f4ec;
+  --bad:#b4442c; --bad-soft:#fbece8; --good:#1f7a55; --good-soft:#e5f4ec; --warn:#8a5d00; --warn-soft:#fbf1dc;
   --display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
@@ -15,11 +15,11 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#12151c; --paper:#1a1f29; --ink:#e7eaf1; --muted:#9aa3b5; --line:#2c3341;
   --accent:#8fa2ff; --accent-soft:#232c4d;
-  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; color-scheme:dark}}
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; --warn:#e9c46a; --warn-soft:#3a3019; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12151c; --paper:#1a1f29; --ink:#e7eaf1; --muted:#9aa3b5; --line:#2c3341;
   --accent:#8fa2ff; --accent-soft:#232c4d;
-  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; color-scheme:dark}
+  --bad:#f08d74; --bad-soft:#3a2420; --good:#6fd1a2; --good-soft:#1c3328; --warn:#e9c46a; --warn-soft:#3a3019; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px}
 .page{max-width:900px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:28px clamp(18px,4vw,40px);display:grid;gap:28px}
@@ -31,18 +31,20 @@ p{margin:0}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .slip{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--mono);font-size:12px;color:var(--muted);border-bottom:1px dashed var(--line);padding-bottom:12px}
 .slip b{color:var(--ink);font-weight:500}
-.lede{display:grid;gap:10px;max-width:70ch}
+.lede{display:grid;gap:10px;max-width:72ch}
 .ask{border-left:3px solid var(--accent);padding-left:12px;color:var(--muted);font-style:italic}
 .answer{font-size:16px}
 .parts{display:flex;flex-wrap:wrap;gap:8px;font-size:13px}
 .parts span{background:var(--accent-soft);color:var(--ink);padding:3px 9px;border-radius:3px}
 .parts b{font-family:var(--mono);color:var(--accent);font-weight:500;margin-right:4px}
+.proto{font-size:13.5px;background:var(--bg);border-radius:4px;padding:9px 12px}
+.proto b{font-weight:600}
 .chain{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .step{background:var(--bg);border-radius:4px;padding:10px 11px;display:grid;gap:4px;align-content:start}
 .step .n{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--bad)}
 .step p{font-size:12.5px;color:var(--muted)}
 .step strong{font-size:13px;color:var(--ink);font-weight:600}
-.note{font-size:13px;color:var(--muted);margin-top:8px;max-width:80ch}
+.note{font-size:13px;color:var(--muted);margin-top:8px;max-width:82ch}
 .parthead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px;border-top:2px solid var(--ink);padding-top:10px}
 .parthead .num{font-family:var(--mono);font-size:13px;color:var(--accent)}
 .parthead h2{margin:0;color:var(--ink);font-size:14px}
@@ -51,23 +53,19 @@ p{margin:0}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .panel{border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:9px;align-content:start;min-width:0}
 .tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
-.panel > p{font-size:13.5px;color:var(--muted)}
+.panel > p,.panel li{font-size:13.5px;color:var(--muted)}
+.panel ul{margin:0;padding-left:16px;display:grid;gap:4px}
 .rule{width:100%;border-collapse:collapse;font-size:13px}
 .rule td{padding:5px 0;border-bottom:1px solid var(--line)}
 .rule td:not(:first-child){text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
 .rule .was{color:var(--muted);text-decoration:line-through}
 .rule .now{color:var(--good);font-weight:500}
 .lbl{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.result{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--good-soft);border-radius:4px;padding:10px 12px;margin-top:12px;font-size:13.5px}
-.result .big{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--good)}
 .journey{display:grid;grid-template-columns:110px repeat(4,minmax(0,1fr));gap:6px;font-size:12.5px;overflow-x:auto}
 .journey .hd{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;padding:4px 0}
 .journey .lane{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 0}
 .journey .c{background:var(--bg);border-radius:4px;padding:8px 9px;color:var(--ink)}
 .journey .c.us{color:var(--muted)}
-.who4{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;font-size:12.5px}
-.who4 span{border:1px solid var(--line);border-radius:3px;padding:2px 8px}
-.who4 .s{font-family:var(--mono);color:var(--bad)}
 .mock{border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.45;display:grid;gap:3px}
 .mock.today{background:var(--bg);color:var(--muted);border:1px dashed var(--line)}
 .mock.new{background:var(--accent-soft);color:var(--ink)}
@@ -75,12 +73,23 @@ p{margin:0}
 .row{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .pill{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;white-space:nowrap}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.rec{background:var(--accent-soft);color:var(--accent)}
+.dchip{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:3px;background:var(--accent-soft);color:var(--accent)}
 .guard{font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.rtab{width:100%;border-collapse:collapse;font-size:13px}
+.rtab th{text-align:left;font-weight:500;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
+.rtab td{padding:8px;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.rtab td:first-child{font-family:var(--body);font-weight:600}
+.rtab .good{color:var(--good);font-weight:500}
+.rtab .bad{color:var(--bad)}
+.tscroll{overflow-x:auto}
+.insight{background:var(--warn-soft);border-radius:4px;padding:10px 12px;font-size:14px;margin-top:10px}
+.insight b{font-weight:600}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
-ul,ol{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14px}
+ul.plain,ol{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14px}
 li span{color:var(--muted)}
 .who{font-family:var(--mono);font-size:11.5px;color:var(--accent);white-space:nowrap}
-.measures{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.measures{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
 .m{background:var(--bg);border-radius:4px;padding:10px 11px;display:grid;gap:2px}
 .m .v{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--good)}
 .m p{font-size:12.5px;color:var(--muted)}
@@ -99,6 +108,7 @@ li span{color:var(--muted)}
     <p class="ask">You asked what we'd build instead, seen by the people it happens to, before anyone touches the code.</p>
     <p class="answer">Three parts, shipped in this order. First make the routing rule fair. Then bring back the four responders it already cut off. Then make sure a responder going quiet can't stay invisible again.</p>
     <div class="parts"><span><b>1</b>The engine</span><span><b>2</b>The healing journey</span><span><b>3</b>The silence</span></div>
+    <p class="proto"><b>A click-through prototype goes with this brief.</b> It has the handler console, the responder app, and a replay of 4.2 for the four responders it cut off. Everything below is on those screens.</p>
   </section>
 
   <section>
@@ -114,7 +124,7 @@ li span{color:var(--muted)}
   </section>
 
   <section>
-    <div class="parthead"><span class="num">Part 1</span><h2>The engine: a fair rule</h2><span class="sub">What changes in how we rank who gets asked</span></div>
+    <div class="parthead"><span class="num">Part 1</span><h2>The engine: a fair rule</h2><span class="sub">What changes in how we rank who gets asked. Scores run from 0.0 to 1.0.</span></div>
     <div class="grid3">
       <div class="panel">
         <span class="tag">A miss isn't a full no</span>
@@ -129,17 +139,16 @@ li span{color:var(--muted)}
       <div class="panel">
         <span class="tag">Scores heal</span>
         <h3>A rough patch fades on its own</h3>
-        <p>Scores ease back toward neutral over time. This answers the open question in the code note from 2019.</p>
-        <p>That note's own counterpoint still holds: if someone stops taking work, that should stick. So healing is slow, and it never outruns a real pattern of no's. Wen and I set the speed.</p>
+        <p>Scores ease back toward 0.5 over time. This answers the open question in the code note from 2019.</p>
+        <p>The prototype uses 20% of the way back each week. That also trims high scores, so a steady responder settles near 0.9. Wen and I set the real speed.</p>
       </div>
       <div class="panel">
         <span class="tag">Saying no beats silence</span>
-        <h3>No new button needed</h3>
-        <p>Responders can already turn a job down or set themselves away. Under the new rule, turning down costs less than missing, and being away costs nothing, because away responders aren't asked at all.</p>
-        <p>No change to the availability feed that Rook Supply reads.</p>
+        <h3>Away, with a time limit</h3>
+        <p>Turning down costs less than missing, and being away costs nothing, because away responders aren't asked at all.</p>
+        <p>New: setting Away asks for how long (1 hour, rest of today, or until switched back), so nobody forgets and goes quiet a new way. This changes the availability record Rook Supply reads, so Supply signs off first.</p>
       </div>
     </div>
-    <div class="result"><span class="big">8–11</span><span>pings a week for the cut-off four in our replay of the new rule, instead of 0–1. The replay can be off by about 3 a week.</span></div>
   </section>
 
   <section>
@@ -153,49 +162,75 @@ li span{color:var(--muted)}
       <div class="c us">Check: each back to 8 or more a week?</div>
       <span class="lane">Responder</span>
       <div class="c">Starts getting local offers again</div>
-      <div class="c">"You're back in the rotation. Missed offers now count for less."</div>
-      <div class="c">Taking jobs lifts their score as normal</div>
-      <div class="c">Back to their usual pace</div>
+      <div class="c">"Welcome back. It may take a couple of weeks to get back to your usual pace."</div>
+      <div class="c">"Your offers are picking up"</div>
+      <div class="c">"Back to your usual pace"</div>
       <span class="lane">Handler</span>
-      <div class="c">No action needed</div>
-      <div class="c">"Farlight is back in the rotation after a quiet spell."</div>
-      <div class="c">Coverage card shows pings returning</div>
-      <div class="c">Quiet flag clears</div>
+      <div class="c">Shows under "Needs a look" as Recovering</div>
+      <div class="c">"Back in the rotation today after a quiet spell"</div>
+      <div class="c">Offers this week climb against their usual mark</div>
+      <div class="c">Drops off the Needs a look list</div>
     </div>
-    <div class="who4"><span>Farlight <span class="s">score 0</span></span><span>The Undertow <span class="s">score 0</span></span><span>Vesper <span class="s">score 0</span></span><span>Meteor Mite <span class="s">score 0</span></span><span style="border:none;color:var(--muted)">Scores from our replay</span></div>
-    <p class="note">The reset ships on the same day as the new rule. Reset them under the old rule and they'd slide straight back.</p>
+    <p class="note">Farlight, The Undertow, Vesper and Meteor Mite all sit at a score of 0 in our replay. The reset ships on the same day as the new rule. Reset them under the old rule and they'd slide straight back.</p>
   </section>
 
   <section>
     <div class="parthead"><span class="num">Part 3</span><h2>The silence</h2><span class="sub">Nobody could see it happening: not the responder, not the handler, not us</span></div>
     <div class="grid2">
       <div class="panel">
-        <span class="tag">What a responder feels</span>
+        <span class="tag">What a responder sees</span>
         <span class="lbl">Today</span>
         <div class="mock today"><span class="h">Nothing</span>Fewer offers, no explanation. Feels like being dropped.</div>
         <span class="lbl">With this</span>
-        <div class="mock new"><span class="h">Heads up</span>You've missed 3 offers this week, so you may get fewer for a while. Busy? Set yourself away. It won't count against you.</div>
-        <p class="guard">Only switched on after Part 1. Before that, it would just be announcing an unfair score. Wording to be tested with responders.</p>
+        <div class="mock new"><span class="h">You've missed a few offers</span>3 this week. If you can't take one, tap Turn down, or set yourself Away when you're busy. That keeps offers coming your way. <span style="color:var(--accent)">[Set Away for today]</span></div>
+        <ul>
+          <li><b>Their score, 0.0 to 1.0</b>, with a what-if: tap take (+0.08), turn down (−0.03) or miss (−0.05) and see where it lands. The ranking and the other inputs stay hidden.</li>
+          <li><b>Offers take over the screen</b>, with a 60-second ring and "Why you: closest available, 6 min away."</li>
+          <li><b>This week</b>: offers against their usual week, the last 6 weeks in neutral colours, and "No answer" instead of a red "Missed".</li>
+        </ul>
+        <p class="guard">Score and heads-up only switch on after Part 1. Before that they'd just be announcing an unfair score. Wording to be tested with responders.</p>
       </div>
       <div class="panel">
         <span class="tag">What a handler sees</span>
         <span class="lbl">Today</span>
         <div class="mock today"><div class="row"><span class="h">Farlight</span><span>Available</span></div>Looks fine. The phone just never goes off.</div>
         <span class="lbl">With this</span>
-        <div class="mock new"><div class="row"><span class="h">Farlight</span><span class="pill bad">Quiet</span></div><div class="row"><span>1 ping this week</span><span class="mono">usual 12</span></div>Most likely cause: missed offers. Check in or update availability.</div>
-        <p class="guard">The card always says what to do next. Example uses Farlight's real numbers. Kip runs several responders, so each gets their own alert sound (Kip's own ask).</p>
+        <div class="mock new"><div class="row"><span class="h">Farlight</span><span class="pill rec">Recovering</span></div><div class="row"><span>Offers coming back: 7 this week</span><span class="mono">usual 12</span></div><div class="row"><span>Last offer: today 09:15</span><span>Avg trip <span class="dchip">6 min</span></span></div></div>
+        <ul>
+          <li><b>One Coverage list</b>, with "Needs a look" first: Quiet, Recovering, Missing offers, Busy. Day and Week change the numbers, not the layout.</li>
+          <li><b>Last offer</b> turns red after 3 days. <b>Busy</b> shows the offers above usual in amber.</li>
+          <li><b>Check in</b> sends a message the responder can answer in one tap. <b>Callouts</b> has its own page: who was asked, who took it, how far away.</li>
+        </ul>
+        <p class="guard">Distance is shown in minutes only, never as a map of where a responder is. These are masked responders, and Security Policy 4.1 rules out working out who someone is. Example uses Farlight's real numbers.</p>
       </div>
     </div>
+  </section>
+
+  <section>
+    <h2>What the replay shows</h2>
+    <p class="note" style="margin:0 0 10px">Real pings to 6 Sep from the saved data, then 4 projected weeks. The "with fix" column assumes the fair rule, healing, and half of missed offers turning into a "no" after the heads-up.</p>
+    <div class="tscroll"><table class="rtab">
+      <thead><tr><th>Responder</th><th>Usual week</th><th>Real, wk of 31 Aug</th><th>No fix, wk of 28 Sep</th><th>Fix, habits recover over 8 wks</th><th>Fix, habits never recover</th></tr></thead>
+      <tbody>
+        <tr><td>Farlight</td><td>12</td><td class="bad">0</td><td class="bad">0</td><td class="good">12 · score 0.90</td><td>4 · score 0.25</td></tr>
+        <tr><td>The Undertow</td><td>12</td><td class="bad">1</td><td class="bad">0</td><td class="good">12 · score 0.90</td><td>5 · score 0.29</td></tr>
+        <tr><td>Vesper</td><td>14</td><td class="bad">1</td><td class="bad">0</td><td class="good">14 · score 0.90</td><td>10 · score 0.48</td></tr>
+        <tr><td>Meteor Mite</td><td>11</td><td class="bad">1</td><td class="bad">0</td><td class="good">11 · score 0.90</td><td>5 · score 0.32</td></tr>
+      </tbody>
+    </table></div>
+    <p class="insight"><b>The rule stops the damage. Answering habits decide the recovery.</b> After 4.2 these four missed 53–64% of offers. If that doesn't change, even the fair rule lets their scores drift down. That's why the heads-up, Turn down and Away matter as much as the rule, and why we need answer times recorded. This replaces the earlier "8–11 pings a week" estimate, which only re-scored the pings they actually got.</p>
   </section>
 
   <section class="two">
     <div>
       <h2>Before we ship, we need to know</h2>
-      <ul>
+      <ul class="plain">
         <li>Were misses slow answers or pings that never arrived? <span>We record neither answer times nor delivery.</span> <span class="who">Wen</span></li>
         <li>Were "miss = no" and the 60s window intended, and why? <span>Marcus asked on 14 Aug, still unanswered.</span> <span class="who">Wen, you</span></li>
-        <li>Real score history, travel times and a healing speed. <span>Every score above is our replay.</span> <span class="who">Wen</span></li>
-        <li>What a quiet responder actually wants to hear. <span>We've only interviewed handlers.</span> <span class="who">Sofia</span></li>
+        <li>Real score history, travel times and a healing speed. <span>Every score and distance above is our replay or an estimate.</span> <span class="who">Wen</span></li>
+        <li>How fast answering habits recover. <span>The biggest driver in the replay, and a guess today.</span> <span class="who">Ravi, Sofia</span></li>
+        <li>What a quiet responder wants to hear and see, including their score. <span>We've only interviewed handlers.</span> <span class="who">Sofia</span></li>
+        <li>Away with a time limit. <span>It changes the availability record Supply reads.</span> <span class="who">Supply</span></li>
       </ul>
     </div>
     <div>
@@ -203,24 +238,26 @@ li span{color:var(--muted)}
       <ol>
         <li>Agree that a miss shouldn't count as a full "no". <span>Direction only. Wen and I set the numbers.</span></li>
         <li>Approve the reset for the four, shipped with the new rule.</li>
-        <li>Treat this as the "Ping timeout tuning" Q3 item, and decide whether the handler card replaces Availability Confidence.</li>
+        <li>Agree to show responders their own score with the what-if. <span>Never the ranking or the other inputs.</span></li>
+        <li>Treat this as the "Ping timeout tuning" Q3 item, and decide whether the handler's Coverage list replaces Availability Confidence.</li>
       </ol>
     </div>
   </section>
 
   <section>
     <h2>Next four weeks, and how we'll know it worked</h2>
-    <p style="font-size:14px;margin-bottom:10px">Start recording answer times now. Replay routing with Wen. Talk to two responders. Click-through prototype of the Part 2 and Part 3 screens. Then pilot Parts 1 and 2 by area for four weeks.</p>
+    <p style="font-size:14px;margin-bottom:10px">Start recording answer times now. Replay routing with Wen on real scores. Test the prototype with two responders and two handlers. Then pilot Parts 1 and 2 by area for four weeks.</p>
     <div class="measures">
       <div class="m"><span class="v">≥ 76.6%</span><p>Pings taken, back to pre-4.2</p></div>
       <div class="m"><span class="v">≥ 8 / wk</span><p>Pings for each of the four</p></div>
+      <div class="m"><span class="v">≤ 10%</span><p>Offers missed by the four (pre-4.2: 1–4%)</p></div>
       <div class="m"><span class="v">→ 0</span><p>New "phone never goes off" tickets</p></div>
       <div class="m"><span class="v">No worse</span><p>Time from ping to taken</p></div>
     </div>
   </section>
 
   <div class="foot">
-    <p>Not in this brief, parked for later: preferring local responders for local jobs, and an automatic alert when anyone's pings halve.</p>
-    <p>Sources: pings, callouts and tickets in the Dispatch database (29 Jun–7 Sep), the routing code, 147 support tickets and September interviews. Score figures and projections are our own replay, pending Wen's real data.</p>
+    <p>Not in this brief, parked for later: changing routing to prefer local responders for local jobs. Distance is shown, but it doesn't change who gets asked.</p>
+    <p>Sources: pings, callouts and tickets in the Dispatch database (29 Jun–7 Sep), the routing code, 147 support tickets and September interviews. Scores are replayed from the saved ping data starting at 0.5 on 29 Jun. Everything after 6 Sep is projection. The prototype's roster, callouts and trip times are illustrative.</p>
   </div>
 </main>
