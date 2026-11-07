@@ -21,4 +21,13 @@ Ask me questions if you see fit.
 
 ### 2.
 
+Okay Claude,
+You & I have been working hard on investigating, identifying & analyzing the problem followed by designing & building the solution.
+
+Now, it's showtime, we need to tell our story! I want you to read the following prompt but execute with the backdrop of narrating a story built on the product management framework with a marvel theme applied to the final html
+
+Read CLAUDE.md and all prompts.md files in this repo. For each module, pull one real finding or artifact and the exact prompt I wrote that produced it. Build a single HTML presentation that says plainly what happened with Release 4.2, backs it up with those findings and prompts, shows the fix through my prototype, and explains how my skill keeps it from happening again. Make it visually engaging, not just text. Save it as final-report.html, then save my work.
+
 ### 3.
+
+How about we also make a DC version?
