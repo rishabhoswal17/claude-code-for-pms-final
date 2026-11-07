@@ -81,3 +81,7 @@ To clarify,
 
 * I want the latest version of the prototype to be saved as 05-super-speed/prototype.html
 * I want the brief to be updated to be aligned to the above prototype & saved the brief for Helen
+
+### 14.
+
+Publish the prototype as a private link for Helen
