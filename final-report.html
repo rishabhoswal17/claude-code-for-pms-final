@@ -153,6 +153,7 @@ s{color:var(--faint)}
 .frame{border:3px solid var(--line);box-shadow:6px 6px 0 var(--shadow);background:var(--panel)}
 .frame-bar{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:3px solid var(--line);background:var(--yellow);color:var(--yellow-ink);font-weight:700;font-size:13.5px}
 .frame-bar a{color:var(--yellow-ink)}
+.fs-btn{font:inherit;font-weight:700;background:none;border:0;padding:0;color:var(--yellow-ink);text-decoration:underline;cursor:pointer}
 .frame iframe{display:block;width:100%;height:min(860px,82vh);border:0;background:#e9ecf2}
 
 /* cover */
@@ -399,7 +400,7 @@ Lastly, I want you to create an accelerated simulation of what would happen if w
     </div>
     <div class="frame">
       <div class="frame-bar"><span>▶ Try it: the Fair Routing prototype (handler console, responder app, 4.2 replay)</span>
-        <span><a href="05-super-speed/prototype.html" target="_blank" rel="noopener">Open full screen</a> · <a href="https://claude.ai/artifact/JWPaVtR5uvBSwu2rhmpYVa" target="_blank" rel="noopener">Published copy</a></span></div>
+        <button type="button" class="fs-btn" id="proto-full">Open full screen ↗</button></div>
       <iframe id="proto" title="Fair Routing prototype"></iframe>
     </div>
     <div class="grid-6-4">
@@ -1744,9 +1745,12 @@ document.getElementById("c-qa").innerHTML = QA.map(q =>
 
 /* load the embedded prototype when its slide comes near */
 const proto = document.getElementById("proto");
+const protoHtml = () => document.getElementById("proto-src").textContent.replace(/<\\\/script/g, "</script");
 new IntersectionObserver((es, o) => {
-  if (es.some(e => e.isIntersecting)) { proto.srcdoc = document.getElementById("proto-src").textContent.replace(/<\\\/script/g, "</script"); o.disconnect(); }
+  if (es.some(e => e.isIntersecting)) { proto.srcdoc = protoHtml(); o.disconnect(); }
 }, { rootMargin: "600px 0px" }).observe(proto);
+document.getElementById("proto-full").onclick = () =>
+  window.open(URL.createObjectURL(new Blob([protoHtml()], { type: "text/html" })), "_blank");
 
 /* slide nav */
 const slides = [...document.querySelectorAll(".slide")];
